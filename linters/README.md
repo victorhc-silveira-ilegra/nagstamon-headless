@@ -27,5 +27,9 @@ Config: [`commitlint.config.mjs`](commitlint.config.mjs)
 
 ## CI seguranca (binario, fora do pip)
 
-- **gitleaks** — varredura de secrets (quando houver CI)
+- **gitleaks** — varredura de secrets no job `security` (`.github/actions/security`)
 - Config do repositorio: [`.gitleaks.toml`](../.gitleaks.toml)
+
+## Release
+
+semantic-release (`linters/releaserc.json`) no job `release` apos lint/test/security em `main`. Template: [`.github/workflows/templates/release-announcement.yaml`](../.github/workflows/templates/release-announcement.yaml).

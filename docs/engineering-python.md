@@ -51,6 +51,8 @@ Ports sao `typing.Protocol` (sem ABC).
 | `make app-security` | bandit + pip-audit |
 | `make app-pre-commit-run` | hooks em todos os arquivos (requer git) |
 
+CI (GitHub Actions): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint, test e security em paralelo; `release` com semantic-release em `main`.
+
 Orquestrador: `app/scripts/operations/clean_workspace.py`.
 
 Convencoes:

@@ -5,7 +5,7 @@ Projeto: Nagstamon Headless (DDD / Hexagonal) — polling de Alertmanager e Nagi
 ## Prioridades
 
 1. Preservar camadas em `app/src` (`domain`, `application`, `infrastructure`, `presentation`).
-2. Usar `make app-lint|app-test|app-security` (via `clean_workspace.py`) apos mudancas.
+2. Usar `make app-lint|app-test|app-security` (via `clean_workspace.py`) apos mudancas. CI em `.github/workflows/ci.yml`.
 3. Nao escrever comentarios no codigo.
 4. Manter cobertura 100% e Conventional Commits.
 5. Config via `.env` na raiz (`SERVERS_DIR`, `PROXY_ADDR`, `REFRESH_INTERVAL`, `HTTP_*`, `DEDUP_*`, `LOG_*`).

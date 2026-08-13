@@ -1,0 +1,14 @@
+# Nagstamon Headless — Release {VERSION}
+
+CI gerou uma nova versao do daemon **nagstamon-headless**.
+
+### Detalhes
+- **Versao:** `{VERSION}`
+- **Data:** `{DATE}`
+- **Stack:** Python hexagonal/DDD, dedup in-memory, Docker minimo
+
+### Historico
+{CHANGELOG}
+
+---
+Release automatico (semantic-release).

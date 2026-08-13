@@ -32,6 +32,17 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 ├── docs/
 ├── infra/docker/
 ├── linters/
+│   └── releaserc.json
+├── .github/
+│   ├── actions/
+│   │   ├── lint/
+│   │   ├── test/
+│   │   ├── security/
+│   │   ├── release/
+│   │   └── sync-tags/
+│   └── workflows/
+│       ├── ci.yml
+│       └── templates/release-announcement.yaml
 ├── Makefile
 ├── AGENTS.md
 ├── prompt-model.md

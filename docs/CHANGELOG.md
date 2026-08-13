@@ -7,3 +7,4 @@
 - Logs semanticos: INFO no caminho feliz, WARNING em fail-open/overlap, ERROR em boot ou ciclo quebrado.
 - Gates de qualidade Python (Ruff, mypy strict, vulture, pytest 100% branch, bandit, pip-audit).
 - Runtime Docker minimo em `infra/docker`.
+- CI GitHub Actions (lint, test, security, semantic-release).
