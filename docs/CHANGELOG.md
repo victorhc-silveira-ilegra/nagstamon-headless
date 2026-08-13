@@ -1,5 +1,7 @@
 # Changelog
 
+## 1.0.0 (2026-08-13)
+
 ## 1.0.0
 
 - Daemon headless em DDD / hexagonal (Alertmanager + Nagios CGI, filtros Nagstamon, stdout).
