@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nagstamon-headless"
+version = "1.0.0"
+description = "Daemon headless de alertas efetivos (Alertmanager / Nagios CGI)"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Ilegra" }]
+dependencies = [
+  "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit==4.6.2",
+  "ruff==0.16.2",
+  "mypy==2.3.0",
+  "vulture==2.16",
+  "bandit==1.9.4",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "pytest-xdist==3.8.0",
+  "pytest-cov==7.1.0",
+  "coverage==7.15.4",
+]
+
+[project.scripts]
+nagstamon-headless = "presentation.worker.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+  "--cov=domain",
+  "--cov=application",
+  "--cov=infrastructure",
+  "--cov=presentation",
+  "--cov-report=term-missing",
+  "--cov-fail-under=100",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["domain", "application", "infrastructure", "presentation"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+  "\\.\\.\\.",
+]
+show_missing = true
+fail_under = 100
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+packages = ["domain", "application", "infrastructure", "presentation"]
+exclude = ["tests/", "scripts/"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "scripts"]
+skips = ["B101"]
+
+[tool.vulture]
+min_confidence = 80
+paths = ["src"]

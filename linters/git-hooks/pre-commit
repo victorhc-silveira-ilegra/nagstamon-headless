@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${REPO_ROOT}"
+exec "$(bash linters/git-hooks/bin/resolve_venv_python.sh)" -m pre_commit run --config .pre-commit-config.yaml

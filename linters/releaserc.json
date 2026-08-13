@@ -1,0 +1,45 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "docs/CHANGELOG.md",
+        "changelogTitle": "# Changelog"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "python -c \"from pathlib import Path; p=Path('app/pyproject.toml'); t=p.read_text(encoding='utf-8'); import re; p.write_text(re.sub(r'^version = \\\".*\\\"', 'version = \\\"${nextRelease.version}\\\"', t, count=1, flags=re.M), encoding='utf-8')\""
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["docs/CHANGELOG.md", "app/pyproject.toml"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "successComment": false,
+        "failTitle": false
+      }
+    ]
+  ]
+}

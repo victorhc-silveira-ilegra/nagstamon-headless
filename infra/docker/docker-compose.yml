@@ -1,0 +1,14 @@
+services:
+  nagstamon-headless:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    container_name: nagstamon-headless
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - ../../.env
+    volumes:
+      - ${HOST_SERVERS_DIR:-~/.nagstamon/servers}:/etc/nagstamon/servers:ro
+    environment:
+      SERVERS_DIR: /etc/nagstamon/servers

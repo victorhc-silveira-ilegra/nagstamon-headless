@@ -1,0 +1,81 @@
+# Engenharia de logging semantico
+
+## Objetivo
+
+Orquestrar o daemon com poucos eventos nomeados, sem dump de payload JSON/HTML nem URL com segredo.
+
+API: `log_event(logger, level, event, **fields)` em `infrastructure/logging/emit.py`.
+Constantes em `infrastructure/logging/events.py`.
+
+A lista de alertas efetivos no stdout e o **sink do produto**, nao um evento de log.
+Dominio e use case **nao** logam.
+
+## Niveis
+
+| Nivel | Quando |
+|-------|--------|
+| INFO | Caminho feliz: boot, ciclo, publish, finished |
+| WARNING | Degradado, processo segue (fail-open, overlap, config vazia no boot) |
+| ERROR | Boot invalido ou `execute()` estoura (worker sai com exit 1) |
+| DEBUG | Apenas `exc_info` nas falhas; sem dumps extras |
+
+## Eventos
+
+| Evento | Nivel | Origem |
+|--------|-------|--------|
+| `worker.started` | INFO | worker (uma vez) |
+| `worker.boot.failed` | ERROR | worker |
+| `poll.cycle.started` | INFO | worker |
+| `poll.cycle.finished` | INFO | worker |
+| `poll.cycle.failed` | ERROR | worker |
+| `poll.cycle.skipped_in_flight` | WARNING | worker (`CycleGuard`) |
+| `poll.alert.skipped_duplicate` | INFO | worker (contagem, sem payload) |
+| `poll.sink.published` | INFO | `StdoutAlertSink` |
+| `monitor.fetch.failed` | WARNING | adapters HTTP / composite (fail-open) |
+| `monitor.config.failed` | WARNING | `IniServerConfigAdapter` (fail-open) |
+| `monitor.config.empty` | WARNING | worker, uma vez se o primeiro ciclo tiver `servers_count=0` |
+
+Caminho feliz com alerta novo (~3 INFO apos o boot): `started` → `published` → `finished`.
+So duplicatas: `started` → `skipped_duplicate` → `finished` (sem `published`).
+Ciclo sobreposto: `skipped_in_flight` (sem `started`).
+Fail-open de fetch/config: WARNING e o ciclo segue.
+
+## Variaveis
+
+| Env | Default | Descricao |
+|-----|---------|-----------|
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` ou `CRITICAL` |
+| `LOG_FORMAT` | `text` | `text` (key=value) ou `json` |
+| `LOG_FILE` | vazio | Se definido, tambem grava em arquivo |
+
+Setup: `presentation.logging.setup_logging(...)`.
+
+## Anti-poluicao
+
+- Dominio nao loga.
+- Use case nao loga.
+- `httpx` / `httpcore` / `urllib3` em `WARNING`.
+- Query string redigida (`redact_url` → `?***`).
+- Campo logado como `monitor_host` (URL sem query secreta).
+- Sem dump de body HTTP ou lista de alertas em INFO.
+- `exc_info` so quando `LOG_LEVEL=DEBUG` em falhas de ciclo/fetch.
+- `monitor.config.empty` nao se repete a cada poll; `finished` ja leva `servers_count`.
+
+## Exemplo (text)
+
+```text
+2026-08-13 12:00:00,000 INFO event=worker.started refresh_interval=30 dedup_enabled=True dedup_window_minutes=30 log_format=text
+2026-08-13 12:00:00,001 INFO event=poll.cycle.started
+2026-08-13 12:00:00,050 INFO event=poll.sink.published alerts_count=3
+2026-08-13 12:00:00,051 INFO event=poll.cycle.finished status=ok servers_count=2 alerts_count=3 claimed_count=3 skipped_duplicate_count=0 duration_ms=50
+```
+
+## Exemplo (WARNING)
+
+```text
+2026-08-13 12:00:00,000 INFO event=worker.started refresh_interval=30 dedup_enabled=True dedup_window_minutes=30 log_format=text
+2026-08-13 12:00:00,001 INFO event=poll.cycle.started
+2026-08-13 12:00:00,020 WARNING event=monitor.fetch.failed server_name=am monitor_host=http://am.example error_type=http_status http_status=500
+2026-08-13 12:00:00,021 WARNING event=monitor.config.empty servers_count=0
+2026-08-13 12:00:00,022 INFO event=poll.cycle.finished status=ok servers_count=0 alerts_count=0 claimed_count=0 skipped_duplicate_count=0 duration_ms=21
+```

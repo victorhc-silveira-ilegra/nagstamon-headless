@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+WORKER_STARTED = "worker.started"
+WORKER_BOOT_FAILED = "worker.boot.failed"
+POLL_CYCLE_STARTED = "poll.cycle.started"
+POLL_CYCLE_FINISHED = "poll.cycle.finished"
+POLL_CYCLE_FAILED = "poll.cycle.failed"
+POLL_CYCLE_SKIPPED_IN_FLIGHT = "poll.cycle.skipped_in_flight"
+POLL_ALERT_SKIPPED_DUPLICATE = "poll.alert.skipped_duplicate"
+POLL_SINK_PUBLISHED = "poll.sink.published"
+MONITOR_FETCH_FAILED = "monitor.fetch.failed"
+MONITOR_CONFIG_FAILED = "monitor.config.failed"
+MONITOR_CONFIG_EMPTY = "monitor.config.empty"
