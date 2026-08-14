@@ -90,7 +90,8 @@ def test_gchat_posts_same_card_text(
     body = json.loads(request.content)
     expected = render_effective_alerts([alert], NOW, DISPLAY_TIMEZONE)
     assert body == {"text": expected}
-    assert "Client              core" in body["text"]
+    assert "*Client:*" in body["text"]
+    assert "core" in body["text"]
     assert _has_event(caplog, POLL_GCHAT_PUBLISHED)
     assert not _has_event(caplog, POLL_GCHAT_FAILED)
 

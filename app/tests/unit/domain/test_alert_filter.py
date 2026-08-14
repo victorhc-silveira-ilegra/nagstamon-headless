@@ -247,3 +247,22 @@ def test_apply_keeps_effective_alerts() -> None:
     keep = _alert(starts_at=NOW - timedelta(minutes=30))
     result = policy.apply([noise, keep], NOW)
     assert result == [keep]
+
+
+def test_filter_started_before_daemon_boot() -> None:
+    boot = NOW - timedelta(minutes=15)
+    policy = AlertFilterPolicy(not_before=boot)
+    already_open = _alert(starts_at=NOW - timedelta(minutes=30))
+    after_boot = _alert(starts_at=NOW - timedelta(minutes=12))
+    at_boot = _alert(starts_at=boot)
+    cgi_old = _alert(duration_str="0d 0h 20m")
+    cgi_unknown = _alert()
+    naive_boot = datetime(2026, 8, 13, 16, 55, 0)
+    naive_policy = AlertFilterPolicy(not_before=naive_boot)
+    naive_old = _alert(starts_at=datetime(2026, 8, 13, 16, 30, 0))
+    assert policy.is_filtered(already_open, NOW)
+    assert not policy.is_filtered(after_boot, NOW)
+    assert not policy.is_filtered(at_boot, NOW)
+    assert policy.is_filtered(cgi_old, NOW)
+    assert not policy.is_filtered(cgi_unknown, NOW)
+    assert naive_policy.is_filtered(naive_old, NOW)

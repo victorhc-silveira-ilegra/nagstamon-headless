@@ -16,6 +16,8 @@
 - AM: Host tambem de `pod` e `namespace`. `make docker-logs` segue INFO + cards, sem prefixo/timestamps do Compose (`F=0` uma vez; `LEVEL=all` todos os niveis; `T=1` / `P=1` para religar).
 - `make docker-smoke`: VPN/proxy + um ciclo real (`docker run` one-shot, `--max-cycles 1`) com os `*.conf` do host; nao disputa o container do `docker-up`.
 - Dedup nao emite `poll.alert.skipped_duplicate`; a contagem fica so em `poll.cycle.finished`.
+- Nao despacha alerta cujo inicio conhecido e anterior ao boot do daemon.
+- Card: labels em negrito (markdown do Chat) e colunas alinhadas com NBSP.
 
 ## 1.0.0 (2026-08-13)
 

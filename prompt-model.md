@@ -31,7 +31,7 @@ Regras:
 - domain e application nao importam infrastructure nem presentation.
 - Ports sao contratos (Protocol / interface / trait). Adapters implementam ports na infrastructure.
 - Validacao de entidades fica no dominio.
-- Politica de filtros de negocio (duracao, ack, janela horaria) vive no dominio, e calculada em codigo (datetime), e injetada pelo composition root; dominio nao loga.
+- Politica de filtros de negocio (duracao, ack, janela horaria, inicio apos o boot do processo) vive no dominio, e calculada em codigo (datetime), e injetada pelo composition root; dominio nao loga.
 - Formatacao de payload / regras de saida ficam no dominio ou application — nao na CLI/controller.
 - Snapshot operacional de alertas (Client, Host, Service, Status, Duration, Started, Status information) e formatado no dominio.
 - Sink operacional pode ter canal extra (ex.: webhook); despacho idempotente via ledger (claim/confirm/release), sem segredo no git.

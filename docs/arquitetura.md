@@ -97,7 +97,7 @@ Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
 Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
-Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`), `FILTER_DURATION_MIN_SECONDS` (default 600) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Duracao e horario sao calculados em Python a partir desses valores.
+Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`), `FILTER_DURATION_MIN_SECONDS` (default 600) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Duracao e horario sao calculados em Python a partir desses valores.
 
 Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
 

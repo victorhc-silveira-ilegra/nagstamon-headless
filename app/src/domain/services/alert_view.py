@@ -11,8 +11,9 @@ from domain.services.alert_filter import parse_duration_seconds
 DISPLAY_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 MISSING = "--"
 PLACEHOLDERS = frozenset({"", "n/a", "nagiosalert", "cgi service"})
-LABEL_WIDTH = 20
+LABEL_WIDTH = len("Status information:")
 INFO_WRAP = 56
+NBSP = "\u00a0"
 SEVERITY_RANK = {"CRITICAL": 0, "WARNING": 1}
 
 
@@ -87,11 +88,23 @@ def status_information(alert: Alert) -> str:
     return display_value(alert.desc)
 
 
+def _markup_value(value: str) -> str:
+    return (
+        value.replace("*", "\\*")
+        .replace("_", "\\_")
+        .replace("~", "\\~")
+        .replace("`", "\\`")
+    )
+
+
 def _labeled(label: str, value: str) -> str:
-    wrapped = textwrap.wrap(value, width=INFO_WRAP) or [MISSING]
-    first = f"{label:<{LABEL_WIDTH}}{wrapped[0]}"
-    indent = " " * LABEL_WIDTH
-    extra = [f"{indent}{part}" for part in wrapped[1:]]
+    visible = f"{label}:"
+    prefix = f"*{visible}*"
+    gutter = NBSP * max(LABEL_WIDTH - len(visible), 1)
+    wrapped = textwrap.wrap(_markup_value(value), width=INFO_WRAP) or [MISSING]
+    hang = NBSP * (LABEL_WIDTH + 2)
+    first = f"{prefix}{gutter}{wrapped[0]}"
+    extra = [f"{hang}{part}" for part in wrapped[1:]]
     return "\n".join([first, *extra])
 
 
@@ -124,7 +137,7 @@ def render_alert_card(
     )
     return "\n".join(
         [
-            f"#{index}  {alert.severity.value}",
+            f"*#{index}  {alert.severity.value}*",
             _labeled("Client", display_value(alert.server)),
             _labeled("Host", host_value(alert)),
             _labeled("Service", display_value(alert.alertname)),
@@ -144,7 +157,8 @@ def render_effective_alerts(
     zone = timezone or DISPLAY_TIMEZONE
     count = len(alerts)
     noun = "alerta efetivo" if count == 1 else "alertas efetivos"
-    header = f"[{format_timestamp(fetched_at, zone)}]  {count} {noun}"
+    stamp = format_timestamp(fetched_at, zone)
+    header = f"*[{stamp}]*  *{count} {noun}*"
     if count == 0:
         return header
     cards = [

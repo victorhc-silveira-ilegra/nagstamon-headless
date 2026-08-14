@@ -7,7 +7,9 @@ from domain.entities.alert import Alert
 from domain.entities.severity import Severity
 from domain.services.alert_view import (
     DISPLAY_TIMEZONE,
+    LABEL_WIDTH,
     MISSING,
+    NBSP,
     format_duration,
     format_started,
     host_value,
@@ -16,6 +18,12 @@ from domain.services.alert_view import (
 )
 
 FETCHED = datetime(2026, 8, 14, 17, 0, 0, tzinfo=UTC)
+
+
+def _row(label: str, value: str) -> str:
+    visible = f"{label}:"
+    pad = max(LABEL_WIDTH - len(visible), 1)
+    return f"*{visible}*{NBSP * pad}{value}"
 
 
 def _alert(**overrides: object) -> Alert:
@@ -111,12 +119,12 @@ def test_status_information_falls_back_to_desc() -> None:
 
 def test_render_empty_and_singular() -> None:
     empty = render_effective_alerts([], FETCHED, DISPLAY_TIMEZONE)
-    assert empty.startswith("[2026-08-14 14:00:00 -0300]")
+    assert empty.startswith("*[2026-08-14 14:00:00 -0300]*")
     assert "0 alertas efetivos" in empty
     assert "#" not in empty
     one = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
     assert "1 alerta efetivo" in one
-    assert "#1  CRITICAL" in one
+    assert "*#1  CRITICAL*" in one
 
 
 def test_render_card_fields_and_wrap() -> None:
@@ -126,14 +134,14 @@ def test_render_card_fields_and_wrap() -> None:
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert "Client              core" in text
-    assert "Host                db01.prod" in text
-    assert "Service             DiskFull" in text
-    assert "Status              CRITICAL" in text
-    assert "Duration            --" in text
-    assert "Started             --" in text
-    assert "Status information  inode usage high" in text
-    assert "\n                    " in text
+    assert _row("Client", "core") in text
+    assert _row("Host", "db01.prod") in text
+    assert _row("Service", "DiskFull") in text
+    assert _row("Status", "CRITICAL") in text
+    assert _row("Duration", "--") in text
+    assert _row("Started", "--") in text
+    assert _row("Status information", "inode usage high") in text
+    assert f"\n{NBSP * (LABEL_WIDTH + 2)}" in text
 
 
 def test_render_started_duration_and_sort() -> None:
@@ -152,13 +160,13 @@ def test_render_started_duration_and_sort() -> None:
         FETCHED,
         ZoneInfo("UTC"),
     )
-    critical_at = text.index("#1  CRITICAL")
-    warning_at = text.index("#2  WARNING")
-    info_at = text.index("#3  INFO")
+    critical_at = text.index("*#1  CRITICAL*")
+    warning_at = text.index("*#2  WARNING*")
+    info_at = text.index("*#3  INFO*")
     assert critical_at < warning_at < info_at
     assert "3 alertas efetivos" in text
-    assert "Duration            0d 2h 15m" in text
-    assert "Started             14/08/2026 16:30:00" in text
+    assert _row("Duration", "0d 2h 15m") in text
+    assert _row("Started", "14/08/2026 16:30:00") in text
 
 
 def test_render_cgi_started_from_duration() -> None:
@@ -167,8 +175,8 @@ def test_render_cgi_started_from_duration() -> None:
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert "Duration            0d 2h 15m 3s" in text
-    assert "Started             14/08/2026 11:44:57" in text
+    assert _row("Duration", "0d 2h 15m 3s") in text
+    assert _row("Started", "14/08/2026 11:44:57") in text
 
 
 def test_render_default_timezone_and_placeholders() -> None:
@@ -178,5 +186,14 @@ def test_render_default_timezone_and_placeholders() -> None:
         naive,
     )
     assert "-0300" in text
-    assert "Host                --" in text
-    assert "Service             --" in text
+    assert _row("Host", "--") in text
+    assert _row("Service", "--") in text
+
+
+def test_render_escapes_chat_markup_in_values() -> None:
+    text = render_effective_alerts(
+        [_alert(status_text="disk *full* _now_")],
+        FETCHED,
+        DISPLAY_TIMEZONE,
+    )
+    assert "disk \\*full\\* \\_now\\_" in text

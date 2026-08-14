@@ -77,6 +77,7 @@ def test_build_use_case_empty_dir(tmp_path: Path) -> None:
     result = use_case.execute()
     assert result.servers_count == 0
     assert result.alerts_count == 0
+    assert use_case._filter_policy._not_before is not None
 
 
 def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:

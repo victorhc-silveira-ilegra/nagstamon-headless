@@ -41,11 +41,12 @@ Ports sao `typing.Protocol` (sem ABC).
 - `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
 - duracao e horario so em Python, via `.env`: &lt; `FILTER_DURATION_MIN_SECONDS` ou ≥ `FILTER_DURATION_MAX_SECONDS` (defaults 600 / 86400) via `starts_at` ou parse de `duration_str`; sem regex do GUI
 - janela diaria `[FILTER_WINDOW_START, FILTER_WINDOW_END]` em `FILTER_TIMEZONE`: `now` no intervalo **e**, se o inicio for conhecido, esse instante no mesmo intervalo hoje; CGI sem `starts_at`/`duration_str` so usa a janela de `now`
+- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
 - states suppressed/pending/unprocessed e silenced/inhibited
 
-`AlertView` (`domain/services/alert_view.py`): snapshot operacional em cards alinhados (CRITICAL primeiro). Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`.
+`AlertView` (`domain/services/alert_view.py`): snapshot operacional em cards (CRITICAL primeiro). Labels em `*negrito*` (markdown do Chat) e colunas com NBSP. Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`.
 
 ## Qualidade
 

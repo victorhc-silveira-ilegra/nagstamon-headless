@@ -77,6 +77,7 @@ def _dispatch_ledger(
 def build_use_case(settings: Settings) -> PollMonitorsUseCase:
     timeout = settings.http_timeout_seconds
     sound = PopenAlertSound() if settings.sound_enabled else None
+    clock = SystemClock()
     return PollMonitorsUseCase(
         server_config=IniServerConfigAdapter(
             servers_dir=settings.servers_dir,
@@ -88,13 +89,14 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
             max_workers=settings.http_max_workers,
         ),
         alert_sink=_alert_sink(settings),
-        clock=SystemClock(),
+        clock=clock,
         filter_policy=AlertFilterPolicy(
             window_start=settings.filter_window_start,
             window_end=settings.filter_window_end,
             timezone=ZoneInfo(settings.filter_timezone),
             min_duration_seconds=settings.filter_duration_min_seconds,
             max_duration_seconds=settings.filter_duration_max_seconds,
+            not_before=clock.now(),
         ),
         dispatch_ledger=_dispatch_ledger(settings),
         alert_sound=sound,

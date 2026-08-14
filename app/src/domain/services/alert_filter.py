@@ -50,12 +50,14 @@ class AlertFilterPolicy:
         timezone: ZoneInfo | None = None,
         min_duration_seconds: int = MIN_DURATION_SECONDS,
         max_duration_seconds: int = MAX_DURATION_SECONDS,
+        not_before: datetime | None = None,
     ) -> None:
         self._window_start = window_start
         self._window_end = window_end
         self._timezone = timezone or DEFAULT_FILTER_TIMEZONE
         self._min_duration_seconds = min_duration_seconds
         self._max_duration_seconds = max_duration_seconds
+        self._not_before = not_before
 
     def _localize(self, instant: datetime) -> datetime:
         return _aware(instant).astimezone(self._timezone)
@@ -87,6 +89,8 @@ class AlertFilterPolicy:
             return True
         start = self._start_instant(alert, now)
         if start is not None:
+            if self._not_before is not None and start < _aware(self._not_before):
+                return True
             duration_seconds = (_aware(now) - start).total_seconds()
             if (
                 duration_seconds < self._min_duration_seconds
