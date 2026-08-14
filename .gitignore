@@ -82,6 +82,7 @@ Thumbs.db
 *.log
 logs/*
 !logs/.gitkeep
+data/
 
 # ---- DOCKER / INFRA LOCAL ----
 docker-compose.override.yml

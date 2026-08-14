@@ -4,8 +4,6 @@ import hashlib
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 from application.use_cases.poll_monitors import (
     PollMonitorsUseCase,
     fingerprint_for,
@@ -14,7 +12,7 @@ from domain.entities.alert import Alert
 from domain.entities.monitor_server import MonitorServer
 from domain.entities.severity import Severity
 
-NOW = datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC)
+NOW = datetime(2026, 8, 13, 17, 0, 0, tzinfo=UTC)
 
 
 class FakeClock:
@@ -44,17 +42,24 @@ class FakeMonitorClient:
 
 
 class FakeAlertSink:
-    def __init__(self, error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        error: Exception | None = None,
+        fail_on: int | None = None,
+    ) -> None:
         self.published: list[Alert] = []
         self.fetched_at: datetime | None = None
         self.error = error
         self.calls = 0
+        self.fail_on: int | None = fail_on
 
     def publish(self, alerts: Sequence[Alert], *, fetched_at: datetime) -> None:
         self.calls += 1
-        if self.error is not None:
+        if self.error is not None and (
+            self.fail_on is None or self.calls == self.fail_on
+        ):
             raise self.error
-        self.published = list(alerts)
+        self.published.extend(list(alerts))
         self.fetched_at = fetched_at
 
 
@@ -62,6 +67,7 @@ class FakeLedger:
     def __init__(self) -> None:
         self.claims: dict[str, datetime] = {}
         self.released: list[str] = []
+        self.confirmed: list[str] = []
 
     def try_claim(
         self, *, fingerprint: str, now: datetime, window_minutes: int
@@ -73,9 +79,21 @@ class FakeLedger:
         self.claims[fingerprint] = now
         return True
 
+    def confirm(self, *, fingerprint: str, now: datetime) -> None:
+        self.confirmed.append(fingerprint)
+        self.claims[fingerprint] = now
+
     def release(self, *, fingerprint: str) -> None:
         self.released.append(fingerprint)
         self.claims.pop(fingerprint, None)
+
+
+class FakeSound:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def play_new_alert(self) -> None:
+        self.calls += 1
 
 
 def _server(name: str = "core") -> MonitorServer:
@@ -96,7 +114,7 @@ def _alert(*, alertname: str = "DiskFull", **overrides: object) -> Alert:
         "alertname": alertname,
         "app": "db01",
         "desc": "disk is full",
-        "starts_at": NOW - timedelta(hours=1),
+        "starts_at": NOW - timedelta(minutes=30),
     }
     payload.update(overrides)
     return Alert(**payload)  # type: ignore[arg-type]
@@ -109,6 +127,7 @@ def _use_case(
     ledger: FakeLedger | None = None,
     clock: FakeClock | None = None,
     window: int = 30,
+    sound: FakeSound | None = None,
 ) -> PollMonitorsUseCase:
     return PollMonitorsUseCase(
         server_config=FakeServerConfig([_server()]),
@@ -116,6 +135,7 @@ def _use_case(
         alert_sink=sink,
         clock=clock or FakeClock(),
         dispatch_ledger=ledger,
+        alert_sound=sound,
         dedup_window_minutes=window,
     )
 
@@ -178,6 +198,7 @@ def test_ledger_claims_first_and_skips_second() -> None:
     first = _use_case(alerts=[alert], sink=sink, ledger=ledger).execute()
     assert first.claimed_count == 1
     assert sink.published == [alert]
+    assert ledger.confirmed == [fingerprint_for(alert)]
     sink2 = FakeAlertSink()
     second = _use_case(alerts=[alert], sink=sink2, ledger=ledger).execute()
     assert second.claimed_count == 0
@@ -203,13 +224,35 @@ def test_sink_failure_releases_claim() -> None:
     alert = _alert()
     ledger = FakeLedger()
     boom = FakeAlertSink(error=RuntimeError("sink"))
-    with pytest.raises(RuntimeError, match="sink"):
-        _use_case(alerts=[alert], sink=boom, ledger=ledger).execute()
+    result = _use_case(alerts=[alert], sink=boom, ledger=ledger).execute()
+    assert result.claimed_count == 0
     assert ledger.released == [fingerprint_for(alert)]
+    assert ledger.confirmed == []
     sink = FakeAlertSink()
-    result = _use_case(alerts=[alert], sink=sink, ledger=ledger).execute()
-    assert result.claimed_count == 1
+    retried = _use_case(alerts=[alert], sink=sink, ledger=ledger).execute()
+    assert retried.claimed_count == 1
     assert sink.published == [alert]
+    assert ledger.confirmed == [fingerprint_for(alert)]
+
+
+def test_sink_failure_releases_only_failed_alert() -> None:
+    first = _alert(alertname="DiskFull")
+    second = _alert(alertname="CPU")
+    ledger = FakeLedger()
+    sink = FakeAlertSink(error=RuntimeError("sink"), fail_on=2)
+    result = _use_case(alerts=[first, second], sink=sink, ledger=ledger).execute()
+    assert result.claimed_count == 1
+    assert sink.published == [first]
+    assert ledger.released == [fingerprint_for(second)]
+    assert ledger.confirmed == [fingerprint_for(first)]
+    retry = FakeAlertSink()
+    second_cycle = _use_case(
+        alerts=[first, second],
+        sink=retry,
+        ledger=ledger,
+    ).execute()
+    assert second_cycle.claimed_count == 1
+    assert retry.published == [second]
 
 
 def test_intra_cycle_duplicates_claim_once() -> None:
@@ -221,6 +264,7 @@ def test_intra_cycle_duplicates_claim_once() -> None:
     assert result.claimed_count == 1
     assert result.skipped_duplicate_count == 1
     assert sink.published == [first]
+    assert sink.calls == 1
 
 
 def test_dedup_off_publishes_all_effective() -> None:
@@ -231,3 +275,46 @@ def test_dedup_off_publishes_all_effective() -> None:
     assert result.claimed_count == 2
     assert result.skipped_duplicate_count == 0
     assert sink.published == [keep, twin]
+
+
+def test_sound_plays_on_new_claim() -> None:
+    sound = FakeSound()
+    ledger = FakeLedger()
+    _use_case(
+        alerts=[_alert()], sink=FakeAlertSink(), ledger=ledger, sound=sound
+    ).execute()
+    assert sound.calls == 1
+    _use_case(
+        alerts=[_alert()], sink=FakeAlertSink(), ledger=ledger, sound=sound
+    ).execute()
+    assert sound.calls == 1
+
+
+def test_sound_skipped_when_sink_fails() -> None:
+    sound = FakeSound()
+    ledger = FakeLedger()
+    result = _use_case(
+        alerts=[_alert()],
+        sink=FakeAlertSink(error=RuntimeError("sink")),
+        ledger=ledger,
+        sound=sound,
+    ).execute()
+    assert result.claimed_count == 0
+    assert sound.calls == 0
+
+
+def test_sound_plays_when_dedup_off_and_effective() -> None:
+    sound = FakeSound()
+    _use_case(
+        alerts=[_alert()],
+        sink=FakeAlertSink(),
+        ledger=None,
+        sound=sound,
+    ).execute()
+    assert sound.calls == 1
+
+
+def test_sound_skipped_when_dedup_off_and_empty() -> None:
+    sound = FakeSound()
+    _use_case(alerts=[], sink=FakeAlertSink(), ledger=None, sound=sound).execute()
+    assert sound.calls == 0

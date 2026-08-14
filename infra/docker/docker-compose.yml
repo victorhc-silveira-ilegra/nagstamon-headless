@@ -1,5 +1,6 @@
 services:
   nagstamon-headless:
+    image: nagstamon-headless:local
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile
@@ -10,5 +11,8 @@ services:
       - ../../.env
     volumes:
       - ${HOST_SERVERS_DIR:-~/.nagstamon/servers}:/etc/nagstamon/servers:ro
+      - ../../data:/var/lib/nagstamon-headless
     environment:
       SERVERS_DIR: /etc/nagstamon/servers
+      SOUND_ENABLED: "false"
+      DEDUP_LEDGER_PATH: /var/lib/nagstamon-headless/dispatch-ledger.json

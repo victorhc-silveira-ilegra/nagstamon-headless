@@ -8,7 +8,7 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   ├── src/
 │   │   ├── domain/
 │   │   │   ├── entities/
-│   │   │   └── services/alert_filter.py
+│   │   │   └── services/alert_filter.py, alert_view.py
 │   │   ├── application/
 │   │   │   ├── ports/
 │   │   │   └── use_cases/poll_monitors.py
@@ -31,6 +31,9 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   └── requirements-dev.txt
 ├── docs/
 ├── infra/docker/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── smoke.sh
 ├── linters/
 │   └── releaserc.json
 ├── .github/
@@ -47,6 +50,8 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 ├── AGENTS.md
 ├── prompt-model.md
 ├── .env.example
+├── .cursor/rules/
+├── .cursor/skills/
 └── run.py
 ```
 
@@ -54,7 +59,7 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 
 - `domain` e `application` **nao** importam `infrastructure` nem `presentation`.
 - `infrastructure` e `presentation` dependem de `application` / `domain`.
-- `presentation/worker` e o **composition root**: instancia Settings, adapters e o use case.
+- `presentation/worker` e o **composition root**: instancia Settings, adapters (incluindo filtro, som, Google Chat e ledger) e o use case.
 - Qualidade operacional vive em `app/scripts/operations` (`make app-lint|app-test|app-security`).
 
 ## Pacotes Python (imports)

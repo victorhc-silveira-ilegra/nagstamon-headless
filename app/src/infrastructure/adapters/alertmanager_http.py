@@ -42,12 +42,31 @@ def _to_alert(server: MonitorServer, item: dict[str, Any]) -> Alert:
     status = _as_dict(item.get("status"))
     alertname = str(labels.get("alertname") or "N/A")
     desc = str(
-        annotations.get("title") or annotations.get("message") or "Sem descricao"
+        annotations.get("title")
+        or annotations.get("message")
+        or annotations.get("summary")
+        or annotations.get("description")
+        or "Sem descricao"
     )
-    app = str(labels.get("application") or labels.get("instance") or "N/A")
+    host = str(
+        labels.get("hostname")
+        or labels.get("host")
+        or labels.get("pod")
+        or labels.get("instance")
+        or labels.get("application")
+        or labels.get("namespace")
+        or "N/A"
+    )
+    app = str(labels.get("application") or host)
     severity_raw = str(labels.get("severity") or "WARNING")
     starts_at = _parse_starts_at(item.get("startsAt"))
-    status_text = f"{alertname} {desc}"
+    status_text = str(
+        annotations.get("description")
+        or annotations.get("summary")
+        or annotations.get("message")
+        or annotations.get("title")
+        or desc
+    )
     return Alert(
         server=server.name,
         severity=Severity(severity_raw),
@@ -59,6 +78,7 @@ def _to_alert(server: MonitorServer, item: dict[str, Any]) -> Alert:
         alert_state=str(status.get("state") or ""),
         silenced_by=_as_tuple(status.get("silencedBy")),
         inhibited_by=_as_tuple(status.get("inhibitedBy")),
+        host=host,
     )
 
 

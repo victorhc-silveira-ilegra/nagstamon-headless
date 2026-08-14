@@ -1,0 +1,182 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from domain.entities.alert import Alert
+from domain.entities.severity import Severity
+from domain.services.alert_view import (
+    DISPLAY_TIMEZONE,
+    MISSING,
+    format_duration,
+    format_started,
+    host_value,
+    render_effective_alerts,
+    status_information,
+)
+
+FETCHED = datetime(2026, 8, 14, 17, 0, 0, tzinfo=UTC)
+
+
+def _alert(**overrides: object) -> Alert:
+    payload: dict[str, object] = {
+        "server": "core",
+        "severity": Severity("critical"),
+        "alertname": "DiskFull",
+        "app": "db01",
+        "desc": "disk is full",
+        "status_text": "filesystem /var is 95 percent full",
+        "host": "db01.prod",
+        "starts_at": FETCHED - timedelta(hours=2, minutes=15),
+    }
+    payload.update(overrides)
+    return Alert(**payload)  # type: ignore[arg-type]
+
+
+def test_alert_strips_host() -> None:
+    assert _alert(host="  db01.prod  ").host == "db01.prod"
+
+
+def test_host_falls_back_to_app_and_placeholders() -> None:
+    assert host_value(_alert(host="", app="web01")) == "web01"
+    assert host_value(_alert(host="N/A", app="CGI Service")) == MISSING
+    assert host_value(_alert(host="node-a", app="other")) == "node-a"
+
+
+def test_duration_prefers_string_then_computes() -> None:
+    assert (
+        format_duration(
+            duration_str="0d 3h 0m",
+            starts_at=FETCHED - timedelta(minutes=10),
+            fetched_at=FETCHED,
+        )
+        == "0d 3h 0m"
+    )
+    assert (
+        format_duration(
+            duration_str="0d  6h 11m 20s",
+            starts_at=None,
+            fetched_at=FETCHED,
+        )
+        == "0d 6h 11m 20s"
+    )
+    assert (
+        format_duration(
+            duration_str="",
+            starts_at=FETCHED - timedelta(days=1, hours=2, minutes=4),
+            fetched_at=FETCHED,
+        )
+        == "1d 2h 4m"
+    )
+    assert (
+        format_duration(duration_str="", starts_at=None, fetched_at=FETCHED) == MISSING
+    )
+    assert (
+        format_duration(
+            duration_str="",
+            starts_at=FETCHED + timedelta(minutes=1),
+            fetched_at=FETCHED,
+        )
+        == MISSING
+    )
+
+
+def test_started_from_duration_when_clock_missing() -> None:
+    assert (
+        format_started(
+            starts_at=None,
+            duration_str="0d 2h 15m",
+            fetched_at=FETCHED,
+            timezone=DISPLAY_TIMEZONE,
+        )
+        == "14/08/2026 11:45:00"
+    )
+    assert (
+        format_started(
+            starts_at=None,
+            duration_str="",
+            fetched_at=FETCHED,
+            timezone=DISPLAY_TIMEZONE,
+        )
+        == MISSING
+    )
+
+
+def test_status_information_falls_back_to_desc() -> None:
+    assert status_information(_alert(status_text="")) == "disk is full"
+    assert status_information(_alert(status_text="N/A", desc="")) == MISSING
+    assert status_information(_alert(status_text="'quoted info'")) == "quoted info"
+    assert status_information(_alert(status_text='"double quoted"')) == "double quoted"
+
+
+def test_render_empty_and_singular() -> None:
+    empty = render_effective_alerts([], FETCHED, DISPLAY_TIMEZONE)
+    assert empty.startswith("[2026-08-14 14:00:00 -0300]")
+    assert "0 alertas efetivos" in empty
+    assert "#" not in empty
+    one = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
+    assert "1 alerta efetivo" in one
+    assert "#1  CRITICAL" in one
+
+
+def test_render_card_fields_and_wrap() -> None:
+    long_info = "inode " + ("usage high " * 12)
+    text = render_effective_alerts(
+        [_alert(status_text=long_info, duration_str="", starts_at=None)],
+        FETCHED,
+        DISPLAY_TIMEZONE,
+    )
+    assert "Client              core" in text
+    assert "Host                db01.prod" in text
+    assert "Service             DiskFull" in text
+    assert "Status              CRITICAL" in text
+    assert "Duration            --" in text
+    assert "Started             --" in text
+    assert "Status information  inode usage high" in text
+    assert "\n                    " in text
+
+
+def test_render_started_duration_and_sort() -> None:
+    warning = _alert(
+        alertname="CPU",
+        severity=Severity("warning"),
+        starts_at=datetime(2026, 8, 14, 16, 30, 0),
+    )
+    unknown = _alert(
+        alertname="Info",
+        severity=Severity("info"),
+        host="aaa",
+    )
+    text = render_effective_alerts(
+        [warning, _alert(), unknown],
+        FETCHED,
+        ZoneInfo("UTC"),
+    )
+    critical_at = text.index("#1  CRITICAL")
+    warning_at = text.index("#2  WARNING")
+    info_at = text.index("#3  INFO")
+    assert critical_at < warning_at < info_at
+    assert "3 alertas efetivos" in text
+    assert "Duration            0d 2h 15m" in text
+    assert "Started             14/08/2026 16:30:00" in text
+
+
+def test_render_cgi_started_from_duration() -> None:
+    text = render_effective_alerts(
+        [_alert(starts_at=None, duration_str="0d  2h 15m 3s")],
+        FETCHED,
+        DISPLAY_TIMEZONE,
+    )
+    assert "Duration            0d 2h 15m 3s" in text
+    assert "Started             14/08/2026 11:44:57" in text
+
+
+def test_render_default_timezone_and_placeholders() -> None:
+    naive = datetime(2026, 8, 14, 17, 0, 0)
+    text = render_effective_alerts(
+        [_alert(alertname="NagiosAlert", host="", app="CGI Service")],
+        naive,
+    )
+    assert "-0300" in text
+    assert "Host                --" in text
+    assert "Service             --" in text

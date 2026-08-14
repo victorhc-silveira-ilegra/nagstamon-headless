@@ -1,0 +1,19 @@
+---
+description: Politica de filtros Nagstamon (ack, duracao, janela), som apos confirm e ledger/Chat
+alwaysApply: true
+---
+
+# Filtros Nagstamon e som
+
+Itens marcados na aba Filters do Nagstamon = excluir do snapshot efetivo.
+
+- Acknowledged: excluir `acknowledged=True` (Nagios CGI com texto `ACKNOWLEDGED`). No Alertmanager, `silenced_by` continua como equivalente de ack.
+- Duracao e horario **so em Python**, valores no `.env`: visivel de `FILTER_DURATION_MIN_SECONDS` (600) ate menos de `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `0d 2h 15m`.
+- Janela: `now` em `[FILTER_WINDOW_START, FILTER_WINDOW_END]` (`13:30`–`18:00`) `FILTER_TIMEZONE` **e**, se o inicio for conhecido (`starts_at` ou duracao parseada), esse instante no mesmo intervalo **hoje**. CGI sem os dois so usa a janela de `now`.
+- Ja existentes: texto de erro HTTP, Watchdog/InfoInhibitor, states suppressed/pending/unprocessed, inhibited.
+
+Construtor de `AlertFilterPolicy` recebe janela, fuso e limites de duracao (worker injeta via `FILTER_*`). Dominio e use case **nao** logam.
+
+Som: port `play_new_alert()` so apos `confirm` de pelo menos um alerta (dedup off: lista efetiva nao vazia apos publish). Adapter fail-open (`poll.sound.failed` WARNING). `SOUND_ENABLED=true` no `.env`; compose pode forcar `false`.
+
+Chat e ledger: `GCHAT_WEBHOOK_URL` + `DEDUP_*` (`DEDUP_LEDGER_PATH` arquivo com flock, ou memoria se vazio). Um fingerprint por alerta (inclui host); claim/confirm/release; Chat raises apos log de falha.

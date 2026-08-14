@@ -4,15 +4,22 @@ import argparse
 import logging
 import time
 from collections.abc import Callable, Sequence
+from zoneinfo import ZoneInfo
 
+from application.ports.alert_sink import AlertSinkPort
 from application.use_cases.poll_monitors import PollCycleResult, PollMonitorsUseCase
+from domain.services.alert_filter import AlertFilterPolicy
 from infrastructure.adapters.alertmanager_http import AlertmanagerHttpClient
+from infrastructure.adapters.composite_alert_sink import CompositeAlertSink
 from infrastructure.adapters.composite_monitor_client import CompositeMonitorClient
+from infrastructure.adapters.file_alert_dispatch_ledger import FileAlertDispatchLedger
+from infrastructure.adapters.google_chat_http import GoogleChatWebhookSink
 from infrastructure.adapters.in_memory_alert_dispatch_ledger import (
     InMemoryAlertDispatchLedger,
 )
 from infrastructure.adapters.ini_server_config import IniServerConfigAdapter
 from infrastructure.adapters.nagios_cgi_http import NagiosCgiHttpClient
+from infrastructure.adapters.popen_alert_sound import PopenAlertSound
 from infrastructure.adapters.stdout_alert_sink import StdoutAlertSink
 from infrastructure.adapters.system_clock import SystemClock
 from infrastructure.config.settings import Settings
@@ -42,9 +49,35 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _alert_sink(settings: Settings) -> AlertSinkPort:
+    zone = ZoneInfo(settings.filter_timezone)
+    stdout = StdoutAlertSink(timezone=zone)
+    if not settings.gchat_webhook_url:
+        return stdout
+    return CompositeAlertSink(
+        stdout,
+        GoogleChatWebhookSink(
+            settings.gchat_webhook_url,
+            timeout_seconds=settings.http_timeout_seconds,
+            proxy=settings.proxy_addr,
+            timezone=zone,
+        ),
+    )
+
+
+def _dispatch_ledger(
+    settings: Settings,
+) -> FileAlertDispatchLedger | InMemoryAlertDispatchLedger | None:
+    if not settings.dedup_enabled:
+        return None
+    if settings.dedup_ledger_path is not None:
+        return FileAlertDispatchLedger(settings.dedup_ledger_path)
+    return InMemoryAlertDispatchLedger()
+
+
 def build_use_case(settings: Settings) -> PollMonitorsUseCase:
     timeout = settings.http_timeout_seconds
-    ledger = InMemoryAlertDispatchLedger() if settings.dedup_enabled else None
+    sound = PopenAlertSound() if settings.sound_enabled else None
     return PollMonitorsUseCase(
         server_config=IniServerConfigAdapter(
             servers_dir=settings.servers_dir,
@@ -55,9 +88,17 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
             nagios=NagiosCgiHttpClient(timeout_seconds=timeout),
             max_workers=settings.http_max_workers,
         ),
-        alert_sink=StdoutAlertSink(),
+        alert_sink=_alert_sink(settings),
         clock=SystemClock(),
-        dispatch_ledger=ledger,
+        filter_policy=AlertFilterPolicy(
+            window_start=settings.filter_window_start,
+            window_end=settings.filter_window_end,
+            timezone=ZoneInfo(settings.filter_timezone),
+            min_duration_seconds=settings.filter_duration_min_seconds,
+            max_duration_seconds=settings.filter_duration_max_seconds,
+        ),
+        dispatch_ledger=_dispatch_ledger(settings),
+        alert_sound=sound,
         dedup_window_minutes=settings.dedup_window_minutes,
     )
 

@@ -17,6 +17,8 @@ def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOG_LEVEL", "INFO")
     monkeypatch.setenv("LOG_FORMAT", "text")
     monkeypatch.delenv("LOG_FILE", raising=False)
+    monkeypatch.delenv("GCHAT_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("DEDUP_LEDGER_PATH", raising=False)
 
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -26,6 +28,14 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOG_FILE", "logs/nagstamon.log")
     monkeypatch.setenv("DEDUP_ENABLED", "false")
     monkeypatch.setenv("DEDUP_WINDOW_MINUTES", "45")
+    monkeypatch.setenv("FILTER_WINDOW_START", "14:00")
+    monkeypatch.setenv("FILTER_WINDOW_END", "17:30")
+    monkeypatch.setenv("FILTER_TIMEZONE", "UTC")
+    monkeypatch.setenv("FILTER_DURATION_MIN_SECONDS", "120")
+    monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "7200")
+    monkeypatch.setenv("SOUND_ENABLED", "false")
+    monkeypatch.setenv("GCHAT_WEBHOOK_URL", "https://chat.example/messages?key=k")
+    monkeypatch.setenv("DEDUP_LEDGER_PATH", "/tmp/dispatch-ledger.json")
     settings = Settings.from_env()
     assert settings.servers_dir == Path("/tmp/servers")
     assert settings.proxy_addr == "http://proxy.example:3128"
@@ -37,6 +47,15 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_file == "logs/nagstamon.log"
     assert settings.dedup_enabled is False
     assert settings.dedup_window_minutes == 45
+    assert settings.filter_window_start.hour == 14
+    assert settings.filter_window_end.hour == 17
+    assert settings.filter_window_end.minute == 30
+    assert settings.filter_timezone == "UTC"
+    assert settings.filter_duration_min_seconds == 120
+    assert settings.filter_duration_max_seconds == 7200
+    assert settings.sound_enabled is False
+    assert settings.gchat_webhook_url == "https://chat.example/messages?key=k"
+    assert settings.dedup_ledger_path == Path("/tmp/dispatch-ledger.json")
 
 
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -50,6 +69,14 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOG_FILE", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
+    monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
+    monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
+    monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
+    monkeypatch.delenv("FILTER_DURATION_MIN_SECONDS", raising=False)
+    monkeypatch.delenv("FILTER_DURATION_MAX_SECONDS", raising=False)
+    monkeypatch.delenv("SOUND_ENABLED", raising=False)
+    monkeypatch.delenv("GCHAT_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("DEDUP_LEDGER_PATH", raising=False)
     settings = Settings.from_env()
     assert settings.servers_dir == Path("/etc/nagstamon/servers")
     assert settings.proxy_addr == ""
@@ -61,6 +88,16 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_file is None
     assert settings.dedup_enabled is True
     assert settings.dedup_window_minutes == 30
+    assert settings.filter_window_start.hour == 13
+    assert settings.filter_window_start.minute == 30
+    assert settings.filter_window_end.hour == 18
+    assert settings.filter_window_end.minute == 0
+    assert settings.filter_timezone == "America/Sao_Paulo"
+    assert settings.filter_duration_min_seconds == 600
+    assert settings.filter_duration_max_seconds == 86400
+    assert settings.sound_enabled is True
+    assert settings.gchat_webhook_url == ""
+    assert settings.dedup_ledger_path is None
 
 
 def test_settings_blank_log_level_and_format(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -168,6 +205,14 @@ def test_settings_loads_dotenv_when_enabled(
     monkeypatch.delenv("LOG_FILE", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
+    monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
+    monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
+    monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
+    monkeypatch.delenv("FILTER_DURATION_MIN_SECONDS", raising=False)
+    monkeypatch.delenv("FILTER_DURATION_MAX_SECONDS", raising=False)
+    monkeypatch.delenv("SOUND_ENABLED", raising=False)
+    monkeypatch.delenv("GCHAT_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("DEDUP_LEDGER_PATH", raising=False)
     monkeypatch.setattr(
         "infrastructure.config.settings.load_project_dotenv",
         _load,
@@ -175,3 +220,74 @@ def test_settings_loads_dotenv_when_enabled(
     settings = Settings.from_env()
     assert settings.servers_dir == Path("/from-dotenv")
     assert settings.refresh_interval == 7
+
+
+def test_settings_rejects_invalid_filter_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WINDOW_START", "25:00")
+    with pytest.raises(ValueError, match="FILTER_WINDOW_START"):
+        Settings.from_env()
+
+
+def test_settings_rejects_malformed_filter_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WINDOW_END", "noon")
+    with pytest.raises(ValueError, match="FILTER_WINDOW_END"):
+        Settings.from_env()
+
+
+def test_settings_blank_filter_window_and_timezone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WINDOW_START", "  ")
+    monkeypatch.setenv("FILTER_WINDOW_END", "  ")
+    monkeypatch.setenv("FILTER_TIMEZONE", "  ")
+    settings = Settings.from_env()
+    assert settings.filter_window_start.hour == 13
+    assert settings.filter_window_end.hour == 18
+    assert settings.filter_timezone == "America/Sao_Paulo"
+
+
+def test_settings_rejects_invalid_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_TIMEZONE", "Not/AZone")
+    with pytest.raises(ValueError, match="FILTER_TIMEZONE"):
+        Settings.from_env()
+
+
+def test_settings_rejects_non_numeric_hhmm(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WINDOW_START", "aa:00")
+    with pytest.raises(ValueError, match="FILTER_WINDOW_START"):
+        Settings.from_env()
+
+
+def test_settings_rejects_invalid_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WINDOW_END", "12:60")
+    with pytest.raises(ValueError, match="FILTER_WINDOW_END"):
+        Settings.from_env()
+
+
+def test_settings_blank_duration_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_DURATION_MIN_SECONDS", "  ")
+    monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "  ")
+    settings = Settings.from_env()
+    assert settings.filter_duration_min_seconds == 600
+    assert settings.filter_duration_max_seconds == 86400
+
+
+def test_settings_rejects_duration_min_not_less_than_max(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_DURATION_MIN_SECONDS", "86400")
+    monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "600")
+    with pytest.raises(ValueError, match="FILTER_DURATION_MIN_SECONDS"):
+        Settings.from_env()

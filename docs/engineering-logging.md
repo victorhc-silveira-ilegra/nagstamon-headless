@@ -7,8 +7,7 @@ Orquestrar o daemon com poucos eventos nomeados, sem dump de payload JSON/HTML n
 API: `log_event(logger, level, event, **fields)` em `infrastructure/logging/emit.py`.
 Constantes em `infrastructure/logging/events.py`.
 
-A lista de alertas efetivos no stdout e o **sink do produto**, nao um evento de log.
-Dominio e use case **nao** logam.
+A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um evento de log. O handler de log tambem escreve em stdout para o `docker logs` nao entremear stderr no meio do card. Dominio e use case **nao** logam.
 
 ## Niveis
 
@@ -31,14 +30,17 @@ Dominio e use case **nao** logam.
 | `poll.cycle.skipped_in_flight` | WARNING | worker (`CycleGuard`) |
 | `poll.alert.skipped_duplicate` | INFO | worker (contagem, sem payload) |
 | `poll.sink.published` | INFO | `StdoutAlertSink` |
+| `poll.gchat.published` | INFO | `GoogleChatWebhookSink` (lista claimed nao vazia) |
+| `poll.gchat.failed` | WARNING | `GoogleChatWebhookSink` (HTTP/rede; raises apos log; use case libera o claim) |
+| `poll.sound.failed` | WARNING | `PopenAlertSound` (player ausente ou falha; fail-open) |
 | `monitor.fetch.failed` | WARNING | adapters HTTP / composite (fail-open) |
 | `monitor.config.failed` | WARNING | `IniServerConfigAdapter` (fail-open) |
 | `monitor.config.empty` | WARNING | worker, uma vez se o primeiro ciclo tiver `servers_count=0` |
 
-Caminho feliz com alerta novo (~3 INFO apos o boot): `started` → `published` → `finished`.
+Caminho feliz com um alerta novo (~4 INFO apos o boot): `started` → `sink.published` (`alerts_count=1`) → `gchat.published` (`alerts_count=1`) → `finished`. Com N claimed e ledger ligado: N pares `sink.published` / `gchat.published`, cada um com `alerts_count=1`.
 So duplicatas: `started` → `skipped_duplicate` → `finished` (sem `published`).
 Ciclo sobreposto: `skipped_in_flight` (sem `started`).
-Fail-open de fetch/config: WARNING e o ciclo segue.
+Fail-open de fetch/config/som: WARNING e o ciclo segue. Falha de Chat: WARNING, release do fingerprint, ciclo segue.
 
 ## Variaveis
 
@@ -58,16 +60,22 @@ Setup: `presentation.logging.setup_logging(...)`.
 - Query string redigida (`redact_url` → `?***`).
 - Campo logado como `monitor_host` (URL sem query secreta).
 - Sem dump de body HTTP ou lista de alertas em INFO.
-- `exc_info` so quando `LOG_LEVEL=DEBUG` em falhas de ciclo/fetch.
+- `exc_info` so quando `LOG_LEVEL=DEBUG` em falhas de ciclo/fetch/Chat.
 - `monitor.config.empty` nao se repete a cada poll; `finished` ja leva `servers_count`.
+- Webhook do Chat: query redigida em `webhook_host`.
 
 ## Exemplo (text)
 
 ```text
 2026-08-13 12:00:00,000 INFO event=worker.started refresh_interval=30 dedup_enabled=True dedup_window_minutes=30 log_format=text
 2026-08-13 12:00:00,001 INFO event=poll.cycle.started
-2026-08-13 12:00:00,050 INFO event=poll.sink.published alerts_count=3
-2026-08-13 12:00:00,051 INFO event=poll.cycle.finished status=ok servers_count=2 alerts_count=3 claimed_count=3 skipped_duplicate_count=0 duration_ms=50
+2026-08-13 12:00:00,050 INFO event=poll.sink.published alerts_count=1
+2026-08-13 12:00:00,051 INFO event=poll.gchat.published alerts_count=1
+2026-08-13 12:00:00,052 INFO event=poll.sink.published alerts_count=1
+2026-08-13 12:00:00,053 INFO event=poll.gchat.published alerts_count=1
+2026-08-13 12:00:00,054 INFO event=poll.sink.published alerts_count=1
+2026-08-13 12:00:00,055 INFO event=poll.gchat.published alerts_count=1
+2026-08-13 12:00:00,056 INFO event=poll.cycle.finished status=ok servers_count=2 alerts_count=3 claimed_count=3 skipped_duplicate_count=0 duration_ms=55
 ```
 
 ## Exemplo (WARNING)
@@ -77,5 +85,7 @@ Setup: `presentation.logging.setup_logging(...)`.
 2026-08-13 12:00:00,001 INFO event=poll.cycle.started
 2026-08-13 12:00:00,020 WARNING event=monitor.fetch.failed server_name=am monitor_host=http://am.example error_type=http_status http_status=500
 2026-08-13 12:00:00,021 WARNING event=monitor.config.empty servers_count=0
-2026-08-13 12:00:00,022 INFO event=poll.cycle.finished status=ok servers_count=0 alerts_count=0 claimed_count=0 skipped_duplicate_count=0 duration_ms=21
+2026-08-13 12:00:00,022 WARNING event=poll.sound.failed error_type=missing_player
+2026-08-13 12:00:00,023 WARNING event=poll.gchat.failed error_type=http_status http_status=500 webhook_host=https://chat.googleapis.com/v1/spaces/AAA/messages?***
+2026-08-13 12:00:00,024 INFO event=poll.cycle.finished status=ok servers_count=0 alerts_count=0 claimed_count=0 skipped_duplicate_count=0 duration_ms=21
 ```

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import zlib
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
@@ -56,10 +58,36 @@ def test_ini_reads_enabled_servers(tmp_path: Path) -> None:
     assert by_name["am"].url == "http://am.example"
     assert by_name["am"].proxy == "http://default:3128"
     assert by_name["am"].username == "user"
+    assert by_name["am"].password == "secret"
     assert by_name["am"].is_alertmanager is True
     assert by_name["core"].url == "http://nagios.example"
     assert by_name["core"].proxy == "http://custom:3128"
     assert len(servers) == 2
+
+
+def test_ini_deobfuscates_nagstamon_secrets(tmp_path: Path) -> None:
+    def _obfuscate(plain: str) -> str:
+        blob = plain.encode()
+        for _ in range(5):
+            encoded = base64.b64encode(blob).decode()
+            blob = zlib.compress(encoded[::-1].encode())
+        return base64.b64encode(blob).decode()
+
+    user = _obfuscate("cgi-user")
+    password = _obfuscate("cgi-secret")
+    (tmp_path / "server_core.conf").write_text(
+        "[Server]\n"
+        "enabled=True\n"
+        "monitor_url=http://nagios.example\n"
+        "type=Nagios\n"
+        f"username={user}\n"
+        f"password={password}\n",
+        encoding="utf-8",
+    )
+    servers = IniServerConfigAdapter(tmp_path, default_proxy="").list_enabled()
+    assert len(servers) == 1
+    assert servers[0].username == "cgi-user"
+    assert servers[0].password == "cgi-secret"
 
 
 def test_ini_skips_invalid_section(
@@ -125,14 +153,23 @@ def test_stdout_sink_prints_alerts(caplog: pytest.LogCaptureFixture) -> None:
         alertname="DiskFull",
         app="db01",
         desc="disk is full",
+        status_text="filesystem /var is 95 percent full",
+        host="db01.prod",
+        duration_str="0d 2h 15m",
+        starts_at=datetime(2026, 8, 13, 10, 0, 0, tzinfo=UTC),
     )
     fetched_at = datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC)
     with caplog.at_level("INFO"):
         sink.publish([alert], fetched_at=fetched_at)
     text = stream.getvalue()
-    assert "Total de Alertas Efetivos: 1" in text
-    assert "CRITICAL" in text
-    assert "DiskFull" in text
+    assert "1 alerta efetivo" in text
+    assert "Client              core-very-long-server-name-exceeds-limit" in text
+    assert "Host                db01.prod" in text
+    assert "Service             DiskFull" in text
+    assert "Status              CRITICAL" in text
+    assert "Duration            0d 2h 15m" in text
+    assert "Started             13/08/2026 07:00:00" in text
+    assert "Status information  filesystem /var is 95 percent full" in text
     assert any(
         getattr(record, "semantic", {}).get("event") == POLL_SINK_PUBLISHED
         for record in caplog.records
@@ -150,4 +187,4 @@ def test_stdout_sink_default_stream(monkeypatch: pytest.MonkeyPatch) -> None:
         [],
         fetched_at=datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC),
     )
-    assert "Total de Alertas Efetivos: 0" in captured.getvalue()
+    assert "0 alertas efetivos" in captured.getvalue()

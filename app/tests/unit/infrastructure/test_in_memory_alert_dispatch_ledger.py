@@ -38,6 +38,20 @@ def test_memory_ledger_release_unknown_is_noop() -> None:
     InMemoryAlertDispatchLedger().release(fingerprint="missing")
 
 
+def test_memory_ledger_confirm_refreshes_timestamp() -> None:
+    ledger = InMemoryAlertDispatchLedger()
+    assert ledger.try_claim(fingerprint="abc", now=NOW, window_minutes=30) is True
+    later = NOW + timedelta(minutes=10)
+    ledger.confirm(fingerprint="abc", now=later)
+    ledger.confirm(fingerprint="missing", now=later)
+    assert (
+        ledger.try_claim(
+            fingerprint="abc", now=later + timedelta(minutes=19), window_minutes=30
+        )
+        is False
+    )
+
+
 def test_memory_ledger_thread_race_only_one_wins() -> None:
     ledger = InMemoryAlertDispatchLedger()
     results: list[bool] = []

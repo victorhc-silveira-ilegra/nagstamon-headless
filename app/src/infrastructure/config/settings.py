@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import time
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from infrastructure.config.dotenv_loader import load_project_dotenv
 
@@ -19,6 +21,29 @@ def _parse_positive_int(raw: str, name: str) -> int:
     if value <= 0:
         raise ValueError(f"{name} must be greater than zero")
     return value
+
+
+def _parse_hhmm(raw: str, name: str) -> time:
+    parts = raw.strip().split(":")
+    if len(parts) != 2:
+        raise ValueError(f"{name} must be HH:MM")
+    try:
+        hour = int(parts[0])
+        minute = int(parts[1])
+    except ValueError as exc:
+        raise ValueError(f"{name} must be HH:MM") from exc
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"{name} must be HH:MM")
+    return time(hour, minute)
+
+
+def _parse_timezone(raw: str) -> str:
+    name = raw.strip() or "America/Sao_Paulo"
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, KeyError, ValueError) as exc:
+        raise ValueError("FILTER_TIMEZONE must be a valid IANA timezone") from exc
+    return name
 
 
 def _parse_positive_float(raw: str, name: str) -> float:
@@ -43,6 +68,14 @@ class Settings:
     log_file: str | None
     dedup_enabled: bool
     dedup_window_minutes: int
+    filter_window_start: time
+    filter_window_end: time
+    filter_timezone: str
+    filter_duration_min_seconds: int
+    filter_duration_max_seconds: int
+    sound_enabled: bool
+    gchat_webhook_url: str
+    dedup_ledger_path: Path | None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -78,6 +111,32 @@ class Settings:
             os.environ.get("DEDUP_WINDOW_MINUTES", "30"),
             "DEDUP_WINDOW_MINUTES",
         )
+        filter_window_start = _parse_hhmm(
+            os.environ.get("FILTER_WINDOW_START", "13:30").strip() or "13:30",
+            "FILTER_WINDOW_START",
+        )
+        filter_window_end = _parse_hhmm(
+            os.environ.get("FILTER_WINDOW_END", "18:00").strip() or "18:00",
+            "FILTER_WINDOW_END",
+        )
+        filter_timezone = _parse_timezone(os.environ.get("FILTER_TIMEZONE", ""))
+        filter_duration_min_seconds = _parse_positive_int(
+            os.environ.get("FILTER_DURATION_MIN_SECONDS", "600").strip() or "600",
+            "FILTER_DURATION_MIN_SECONDS",
+        )
+        filter_duration_max_seconds = _parse_positive_int(
+            os.environ.get("FILTER_DURATION_MAX_SECONDS", "86400").strip() or "86400",
+            "FILTER_DURATION_MAX_SECONDS",
+        )
+        if filter_duration_min_seconds >= filter_duration_max_seconds:
+            raise ValueError(
+                "FILTER_DURATION_MIN_SECONDS must be less than "
+                "FILTER_DURATION_MAX_SECONDS"
+            )
+        sound_enabled = _parse_bool(os.environ.get("SOUND_ENABLED", "true"))
+        gchat_webhook_url = os.environ.get("GCHAT_WEBHOOK_URL", "").strip()
+        ledger_raw = os.environ.get("DEDUP_LEDGER_PATH", "").strip()
+        dedup_ledger_path = Path(ledger_raw).expanduser() if ledger_raw else None
         return cls(
             servers_dir=servers_dir,
             proxy_addr=proxy_addr,
@@ -89,4 +148,12 @@ class Settings:
             log_file=log_file_raw or None,
             dedup_enabled=dedup_enabled,
             dedup_window_minutes=dedup_window_minutes,
+            filter_window_start=filter_window_start,
+            filter_window_end=filter_window_end,
+            filter_timezone=filter_timezone,
+            filter_duration_min_seconds=filter_duration_min_seconds,
+            filter_duration_max_seconds=filter_duration_max_seconds,
+            sound_enabled=sound_enabled,
+            gchat_webhook_url=gchat_webhook_url,
+            dedup_ledger_path=dedup_ledger_path,
         )

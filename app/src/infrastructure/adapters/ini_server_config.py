@@ -6,6 +6,7 @@ from pathlib import Path
 
 from domain.entities.errors import DomainValidationError
 from domain.entities.monitor_server import MonitorServer
+from infrastructure.adapters.nagstamon_secret import deobfuscate
 from infrastructure.logging import MONITOR_CONFIG_FAILED, log_event, redact_url
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,12 @@ class IniServerConfigAdapter:
                         name=name,
                         url=url,
                         proxy=proxy,
-                        username=parser.get(section, "username", fallback=""),
-                        password=parser.get(section, "password", fallback=""),
+                        username=deobfuscate(
+                            parser.get(section, "username", fallback="")
+                        ),
+                        password=deobfuscate(
+                            parser.get(section, "password", fallback="")
+                        ),
                         server_type=parser.get(section, "type", fallback=""),
                     )
                 )

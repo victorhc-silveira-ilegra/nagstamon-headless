@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from application.ports.alert_dispatch_ledger import AlertDispatchLedgerPort
 from application.ports.alert_sink import AlertSinkPort
+from application.ports.alert_sound import AlertSoundPort
 from application.ports.clock import ClockPort
 from application.ports.monitor_client import MonitorClientPort
 from application.ports.server_config import ServerConfigPort
@@ -46,6 +47,7 @@ class PollMonitorsUseCase:
         clock: ClockPort,
         filter_policy: AlertFilterPolicy | None = None,
         dispatch_ledger: AlertDispatchLedgerPort | None = None,
+        alert_sound: AlertSoundPort | None = None,
         dedup_window_minutes: int = 30,
     ) -> None:
         self._server_config = server_config
@@ -54,7 +56,12 @@ class PollMonitorsUseCase:
         self._clock = clock
         self._filter_policy = filter_policy or AlertFilterPolicy()
         self._dispatch_ledger = dispatch_ledger
+        self._alert_sound = alert_sound
         self._dedup_window_minutes = dedup_window_minutes
+
+    def _play_new_alert(self) -> None:
+        if self._alert_sound is not None:
+            self._alert_sound.play_new_alert()
 
     def execute(self) -> PollCycleResult:
         servers = list(self._server_config.list_enabled())
@@ -63,6 +70,8 @@ class PollMonitorsUseCase:
         effective = self._filter_policy.apply(raw_alerts, now)
         if self._dispatch_ledger is None:
             self._alert_sink.publish(effective, fetched_at=now)
+            if effective:
+                self._play_new_alert()
             return PollCycleResult(
                 servers_count=len(servers),
                 alerts_count=len(effective),
@@ -71,26 +80,25 @@ class PollMonitorsUseCase:
             )
         unique, intra_skipped = _unique_by_dedup_key(effective)
         claimed: list[Alert] = []
-        claimed_fingerprints: list[str] = []
         skipped = intra_skipped
         for alert in unique:
             fingerprint = fingerprint_for(alert)
-            if self._dispatch_ledger.try_claim(
+            if not self._dispatch_ledger.try_claim(
                 fingerprint=fingerprint,
                 now=now,
                 window_minutes=self._dedup_window_minutes,
             ):
-                claimed.append(alert)
-                claimed_fingerprints.append(fingerprint)
-            else:
                 skipped += 1
-        if claimed:
+                continue
             try:
-                self._alert_sink.publish(claimed, fetched_at=now)
+                self._alert_sink.publish([alert], fetched_at=now)
             except Exception:
-                for fingerprint in claimed_fingerprints:
-                    self._dispatch_ledger.release(fingerprint=fingerprint)
-                raise
+                self._dispatch_ledger.release(fingerprint=fingerprint)
+                continue
+            self._dispatch_ledger.confirm(fingerprint=fingerprint, now=now)
+            claimed.append(alert)
+        if claimed:
+            self._play_new_alert()
         return PollCycleResult(
             servers_count=len(servers),
             alerts_count=len(effective),

@@ -1,0 +1,22 @@
+---
+description: Snapshot stdout/Chat de alerta efetivo em cards (Client Host Service Status Duration Started Info) e despacho por claimed
+alwaysApply: true
+---
+
+# Snapshot de alerta (stdout e Chat)
+
+A saida operacional (sink, nao log) e um **card por alerta**, gerado em `domain/services/alert_view.py`. Nao voltar ao one-liner `[SEVERITY] server | name (app): desc`.
+
+Campos e fontes:
+
+- Client = `server`
+- Host = `host` ou, se vazio/`N/A`, `app` (AM: hostname, host, pod, instance, application, namespace)
+- Service = `alertname`
+- Status = `severity`
+- Duration = `duration_str` (espacos colapsados) ou `starts_at` ate `fetched_at` (`0d 2h 15m`)
+- Started = `starts_at` no fuso, ou `fetched_at` menos a duracao parseada (CGI), formato BR `DD/MM/YYYY HH:MM:SS`
+- Status information = `status_text` ou `desc`
+
+Placeholder (`N/A`, `NagiosAlert`, `CGI Service`, vazio) vira `--`. CRITICAL antes de WARNING. Informacao longa quebra na coluna. Dominio nao loga.
+
+Com ledger (`DEDUP_ENABLED`): um `publish([alert])` por claimed — cabecalho `1 alerta efetivo`, `#1`. Com `GCHAT_WEBHOOK_URL`, o mesmo texto vai ao Chat (um POST); falha loga `poll.gchat.failed` e raises; use case `release` e segue. Fluxo: `try_claim` → `publish` → `confirm`. Fingerprint inclui `host`. `DEDUP_LEDGER_PATH` persistente (flock); vazio = memoria.

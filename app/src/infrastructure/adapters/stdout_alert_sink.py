@@ -5,31 +5,30 @@ import sys
 from collections.abc import Sequence
 from datetime import datetime
 from typing import TextIO
+from zoneinfo import ZoneInfo
 
 from domain.entities.alert import Alert
+from domain.services.alert_view import DISPLAY_TIMEZONE, render_effective_alerts
 from infrastructure.logging import POLL_SINK_PUBLISHED, log_event
 
 logger = logging.getLogger(__name__)
 
 
 class StdoutAlertSink:
-    def __init__(self, stream: TextIO | None = None) -> None:
+    def __init__(
+        self,
+        stream: TextIO | None = None,
+        timezone: ZoneInfo | None = None,
+    ) -> None:
         self._stream = stream or sys.stdout
+        self._timezone = timezone or DISPLAY_TIMEZONE
 
     def publish(self, alerts: Sequence[Alert], *, fetched_at: datetime) -> None:
-        timestamp = fetched_at.strftime("%Y-%m-%d %H:%M:%S")
         print(
-            f"[{timestamp}] Total de Alertas Efetivos: {len(alerts)}",
+            render_effective_alerts(alerts, fetched_at, self._timezone),
             file=self._stream,
+            flush=True,
         )
-        for alert in alerts:
-            severity = alert.severity.value
-            print(
-                f"  [{severity:^7}] {alert.server[:32]:<32} | "
-                f"{alert.alertname} ({alert.app}): {alert.desc}",
-                file=self._stream,
-            )
-        print("-" * 100, file=self._stream)
         log_event(
             logger,
             logging.INFO,

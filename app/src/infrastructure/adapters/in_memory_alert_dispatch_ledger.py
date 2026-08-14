@@ -29,6 +29,11 @@ class InMemoryAlertDispatchLedger:
             self._claims[fingerprint] = now
             return True
 
+    def confirm(self, *, fingerprint: str, now: datetime) -> None:
+        with self._lock:
+            if fingerprint in self._claims:
+                self._claims[fingerprint] = now
+
     def release(self, *, fingerprint: str) -> None:
         with self._lock:
             self._claims.pop(fingerprint, None)

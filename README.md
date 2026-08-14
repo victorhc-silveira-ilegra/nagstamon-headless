@@ -11,7 +11,7 @@
 [![Semantic Release](https://img.shields.io/badge/release-semantic--release-e10079?logo=semantic-release&logoColor=white)](https://semantic-release.gitbook.io/)
 [![Architecture](https://img.shields.io/badge/architecture-hexagonal%20%2F%20DDD-0A66C2)](docs/arquitetura.md)
 
-Daemon headless que consulta monitores (Prometheus Alertmanager e Nagios CGI), aplica os filtros de ruido no estilo Nagstamon e imprime os **alertas efetivos** no stdout.
+Daemon headless que consulta monitores (Prometheus Alertmanager e Nagios CGI), aplica os filtros de ruido no estilo Nagstamon e imprime os **alertas efetivos** no stdout (Client, Host, Service, Status, Duration, Started, Status information). Google Chat e opcional (`GCHAT_WEBHOOK_URL`); despacho idempotente via ledger em `DEDUP_LEDGER_PATH`.
 
 Arquitetura: DDD / hexagonal. Qualidade: Ruff, mypy strict, vulture, pytest com cobertura 100% (branch), bandit e pip-audit.
 
@@ -22,7 +22,7 @@ cp .env.example .env
 make app-setup
 ```
 
-Ajuste `.env` (proxy, diretorio de `.conf`, intervalo). Credenciais ficam nos arquivos `~/.nagstamon/servers/*.conf`, nao no git.
+Ajuste `.env` (proxy, VPN, diretorio de `.conf`, intervalo). Credenciais ficam nos arquivos `~/.nagstamon/servers/*.conf` (ofuscadas pelo GUI); o daemon desofusca como o Nagstamon. `make docker-smoke` usa essa config real (VPN + proxy + `*.conf`); nao roda com servers vazios.
 
 `make app-setup` instala `.venv` e dependencias. Hooks git so sao instalados se o diretorio ja for um repositorio git.
 
@@ -34,6 +34,7 @@ make app-test
 make app-security
 make app-run
 make docker-up
+make docker-smoke
 make docker-logs
 ```
 

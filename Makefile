@@ -4,6 +4,7 @@ DOCKER_DIR=infra/docker
 DOCKER_COMPOSE=docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml --project-directory $(DOCKER_DIR)
 DOCKER_LOGS_TAIL ?= 200
 DOCKER_LOGS_SERVICES ?= nagstamon-headless
+LEVEL ?= INFO
 
 RESOLVE_PY := $(shell bash linters/git-hooks/bin/resolve_venv_python.sh 2>/dev/null || echo python3)
 PYTHON := $(RESOLVE_PY)
@@ -19,7 +20,7 @@ RESET  := \033[0m
 
 .PHONY: help app-install app-lint app-test app-security app-run app-pre-commit \
 	app-pre-commit-run app-setup app-clean docker-up docker-down docker-ps \
-	docker-logs docker-sh docker-restart docker-clean docker-rebuild
+	docker-logs docker-sh docker-restart docker-clean docker-rebuild docker-smoke
 
 help:
 	@echo -e "$(BLUE)========================================================================$(RESET)"
@@ -42,12 +43,13 @@ help:
 	@echo -e ""
 	@echo -e "$(YELLOW)Docker:$(RESET)"
 	@echo -e "  $(GREEN)docker-up$(RESET)          - Sobe o daemon headless"
+	@echo -e "  $(GREEN)docker-smoke$(RESET)       - Smoke real: VPN/proxy + 1 ciclo nos .conf"
 	@echo -e "  $(GREEN)docker-rebuild$(RESET)     - Rebuild da imagem e recria o container"
 	@echo -e "  $(GREEN)docker-down$(RESET)        - Para o container (preserva volumes)"
 	@echo -e "  $(GREEN)docker-clean$(RESET)       - $(RED)DESTRUTIVO$(RESET): remove containers, redes e volumes"
 	@echo -e "  $(GREEN)docker-restart$(RESET)     - Restart do servico"
 	@echo -e "  $(GREEN)docker-ps$(RESET)          - Status"
-	@echo -e "  $(GREEN)docker-logs$(RESET)        - Logs (DOCKER_SERVICE=...; F=1 para follow)"
+	@echo -e "  $(GREEN)docker-logs$(RESET)        - Segue INFO + cards (F=0 uma vez; LEVEL=all todos; T=1; P=1)"
 	@echo -e "  $(GREEN)docker-sh$(RESET)          - Shell /bin/bash no container"
 	@echo -e "$(BLUE)========================================================================$(RESET)"
 
@@ -86,6 +88,10 @@ docker-up:
 	@test -f .env || cp .env.example .env
 	$(DOCKER_COMPOSE) up -d --build
 
+docker-smoke:
+	@test -f .env || { echo "crie .env a partir de .env.example (proxy/VPN reais)"; exit 1; }
+	bash infra/docker/smoke.sh
+
 docker-rebuild:
 	@test -f .env || cp .env.example .env
 	@echo -e "$(YELLOW)Rebuild da imagem e recriacao do container$(RESET)"
@@ -109,8 +115,13 @@ docker-restart:
 docker-ps:
 	$(DOCKER_COMPOSE) ps
 
+docker-logs: F ?= 1
 docker-logs:
-	$(DOCKER_COMPOSE) logs --timestamps --tail=$(DOCKER_LOGS_TAIL) $(if $(F),-f,) $(if $(DOCKER_SERVICE),$(DOCKER_SERVICE),$(DOCKER_LOGS_SERVICES))
+ifeq ($(filter all ALL,$(LEVEL)),)
+	$(DOCKER_COMPOSE) logs --tail=$(DOCKER_LOGS_TAIL) $(if $(P),,--no-log-prefix) $(if $(T),--timestamps,) $(if $(filter 1,$(F)),-f,) $(if $(DOCKER_SERVICE),$(DOCKER_SERVICE),$(DOCKER_LOGS_SERVICES)) | grep --line-buffered -vE ' (WARNING|ERROR|DEBUG|CRITICAL) event=|"level": "(WARNING|ERROR|DEBUG|CRITICAL)"' || true
+else
+	$(DOCKER_COMPOSE) logs --tail=$(DOCKER_LOGS_TAIL) $(if $(P),,--no-log-prefix) $(if $(T),--timestamps,) $(if $(filter 1,$(F)),-f,) $(if $(DOCKER_SERVICE),$(DOCKER_SERVICE),$(DOCKER_LOGS_SERVICES))
+endif
 
 docker-sh:
 	@echo -e "$(CYAN)Abrindo /bin/bash em '$(or $(DOCKER_SERVICE),nagstamon-headless)'$(RESET)"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 from presentation.logging.formatters import JsonSemanticFormatter, TextSemanticFormatter
@@ -24,7 +25,7 @@ def setup_logging(
         formatter = TextSemanticFormatter()
 
     handlers: list[logging.Handler] = []
-    stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(formatter)
     handlers.append(stream_handler)
 
