@@ -37,15 +37,19 @@ class FakeUseCase:
         self,
         result: PollCycleResult | None = None,
         error: Exception | None = None,
+        results: list[PollCycleResult] | None = None,
     ) -> None:
         self.result = result or PollCycleResult(servers_count=1, alerts_count=0)
         self.error = error
+        self.results = results
         self.calls = 0
 
     def execute(self) -> PollCycleResult:
         self.calls += 1
         if self.error is not None:
             raise self.error
+        if self.results is not None:
+            return self.results[self.calls - 1]
         return self.result
 
 
@@ -64,7 +68,9 @@ def _settings(tmp_path: Path) -> Settings:
         filter_window_start=time(13, 30),
         filter_window_end=time(18, 0),
         filter_timezone="America/Sao_Paulo",
-        filter_duration_min_seconds=600,
+        filter_hold_fast_seconds=180,
+        filter_hold_critical_seconds=180,
+        filter_hold_warning_seconds=600,
         filter_duration_max_seconds=86400,
         sound_enabled=False,
         gchat_webhook_url="",
@@ -78,6 +84,9 @@ def test_build_use_case_empty_dir(tmp_path: Path) -> None:
     assert result.servers_count == 0
     assert result.alerts_count == 0
     assert use_case._filter_policy._not_before is not None
+    assert use_case._filter_policy._hold_fast_seconds == 180
+    assert use_case._filter_policy._hold_critical_seconds == 180
+    assert use_case._filter_policy._hold_warning_seconds == 600
 
 
 def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
@@ -96,7 +105,9 @@ def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
-        filter_duration_min_seconds=settings.filter_duration_min_seconds,
+        filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
+        filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
+        filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
         filter_duration_max_seconds=settings.filter_duration_max_seconds,
         sound_enabled=False,
         gchat_webhook_url="",
@@ -124,7 +135,9 @@ def test_build_use_case_sound_enabled(tmp_path: Path) -> None:
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
-        filter_duration_min_seconds=settings.filter_duration_min_seconds,
+        filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
+        filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
+        filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
         filter_duration_max_seconds=settings.filter_duration_max_seconds,
         sound_enabled=True,
         gchat_webhook_url="",
@@ -151,7 +164,9 @@ def test_build_use_case_gchat_enabled(tmp_path: Path) -> None:
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
-        filter_duration_min_seconds=settings.filter_duration_min_seconds,
+        filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
+        filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
+        filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
         filter_duration_max_seconds=settings.filter_duration_max_seconds,
         sound_enabled=False,
         gchat_webhook_url="https://chat.googleapis.com/v1/spaces/x/messages?key=k",
@@ -179,7 +194,9 @@ def test_build_use_case_file_ledger(tmp_path: Path) -> None:
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
-        filter_duration_min_seconds=settings.filter_duration_min_seconds,
+        filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
+        filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
+        filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
         filter_duration_max_seconds=settings.filter_duration_max_seconds,
         sound_enabled=False,
         gchat_webhook_url="",
@@ -223,6 +240,47 @@ def test_run_two_cycles_calls_sleeper(tmp_path: Path) -> None:
     assert code == 0
     assert fake.calls == 2
     assert slept == [1]
+
+
+def test_run_idle_cycles_log_heartbeat_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reset_logging_state()
+    fake = FakeUseCase()
+    code = run(
+        ["--max-cycles", "3"],
+        use_case=fake,  # type: ignore[arg-type]
+        settings=_settings(tmp_path),
+        sleeper=lambda _interval: None,
+    )
+    assert code == 0
+    captured = _captured(capsys)
+    assert captured.count(POLL_CYCLE_STARTED) == 1
+    assert captured.count(POLL_CYCLE_FINISHED) == 1
+    reset_logging_state()
+
+
+def test_run_later_claim_logs_finished_without_started(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    reset_logging_state()
+    fake = FakeUseCase(
+        results=[
+            PollCycleResult(servers_count=1, alerts_count=0, claimed_count=0),
+            PollCycleResult(servers_count=1, alerts_count=1, claimed_count=1),
+        ]
+    )
+    code = run(
+        ["--max-cycles", "2"],
+        use_case=fake,  # type: ignore[arg-type]
+        settings=_settings(tmp_path),
+        sleeper=lambda _interval: None,
+    )
+    assert code == 0
+    captured = _captured(capsys)
+    assert captured.count(POLL_CYCLE_STARTED) == 1
+    assert captured.count(POLL_CYCLE_FINISHED) == 2
+    reset_logging_state()
 
 
 def test_run_infinite_until_sleeper_stops(tmp_path: Path) -> None:

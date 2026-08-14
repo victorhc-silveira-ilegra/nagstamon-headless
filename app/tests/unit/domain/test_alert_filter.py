@@ -134,13 +134,31 @@ def test_parse_duration_seconds() -> None:
 def test_filter_duration_from_python_clock_or_parsed_string() -> None:
     policy = AlertFilterPolicy()
     assert policy.is_filtered(_alert(duration_str="1d 0h 0m"), NOW)
-    assert policy.is_filtered(_alert(duration_str="0d 0h 9m"), NOW)
-    assert not policy.is_filtered(_alert(duration_str="0d 0h 10m"), NOW)
-    assert policy.is_filtered(_alert(duration_str="0d 1h 0m"), NOW)
-    assert policy.is_filtered(_alert(duration_str="0d 16h 0m"), NOW)
-    assert policy.is_filtered(_alert(duration_str="0d 23h 0m"), NOW)
-    assert not policy.is_filtered(_alert(duration_str="nope"), NOW)
+    assert policy.is_filtered(
+        _alert(
+            alertname="CPU",
+            desc="cpu high",
+            status_text="cpu",
+            duration_str="0d 0h 9m",
+        ),
+        NOW,
+    )
+    assert not policy.is_filtered(
+        _alert(
+            alertname="CPU",
+            desc="cpu high",
+            status_text="cpu",
+            duration_str="0d 0h 10m",
+        ),
+        NOW,
+    )
+    assert not policy.is_filtered(_alert(duration_str="0d 0h 3m"), NOW)
+    assert policy.is_filtered(_alert(duration_str="0d 0h 2m"), NOW)
+    assert policy.is_filtered(_alert(duration_str="nope"), NOW)
     clock_wins = _alert(
+        alertname="CPU",
+        desc="cpu high",
+        status_text="cpu",
         starts_at=NOW - timedelta(minutes=9),
         duration_str="0d 0h 10m",
     )
@@ -165,28 +183,32 @@ def test_filter_starts_at_windows() -> None:
     assert not policy.is_filtered(naive, naive_now)
 
 
-def test_filter_numeric_duration_ten_minutes_and_one_day() -> None:
+def test_filter_numeric_duration_hold_and_one_day() -> None:
     policy = AlertFilterPolicy()
-    nine_min = _alert(starts_at=NOW - timedelta(minutes=9))
-    ten_min = _alert(starts_at=NOW - timedelta(minutes=10))
+    cpu = dict(alertname="CPU", desc="cpu high", status_text="cpu")
+    nine_min = _alert(starts_at=NOW - timedelta(minutes=9), **cpu)
+    ten_min = _alert(starts_at=NOW - timedelta(minutes=10), **cpu)
+    two_min = _alert(starts_at=NOW - timedelta(minutes=2))
+    three_min = _alert(starts_at=NOW - timedelta(minutes=3))
     one_day = _alert(starts_at=NOW - timedelta(seconds=86400))
     assert policy.is_filtered(nine_min, NOW)
     assert not policy.is_filtered(ten_min, NOW)
+    assert policy.is_filtered(two_min, NOW)
+    assert not policy.is_filtered(three_min, NOW)
     assert policy.is_filtered(one_day, NOW)
 
 
 def test_filter_daily_window_for_now() -> None:
     policy = AlertFilterPolicy()
-    cgi = _alert()
     keep = _alert(starts_at=NOW - timedelta(minutes=30))
+    started = datetime(2026, 8, 13, 16, 30, 0, tzinfo=UTC)
     before = datetime(2026, 8, 13, 16, 29, 0, tzinfo=UTC)
-    start = datetime(2026, 8, 13, 16, 30, 0, tzinfo=UTC)
     end = datetime(2026, 8, 13, 21, 0, 0, tzinfo=UTC)
     after = datetime(2026, 8, 13, 21, 0, 1, tzinfo=UTC)
-    assert policy.is_filtered(cgi, before)
-    assert not policy.is_filtered(cgi, start)
+    early = _alert(starts_at=started)
+    assert policy.is_filtered(early, before)
     assert not policy.is_filtered(keep, end)
-    assert policy.is_filtered(cgi, after)
+    assert policy.is_filtered(early, after)
 
 
 def test_filter_start_must_fall_in_window_today() -> None:
@@ -204,8 +226,11 @@ def test_filter_start_must_fall_in_window_today() -> None:
 
 def test_filter_acknowledged() -> None:
     policy = AlertFilterPolicy()
-    assert policy.is_filtered(_alert(acknowledged=True), NOW)
-    assert not policy.is_filtered(_alert(acknowledged=False), NOW)
+    open_alert = _alert(starts_at=NOW - timedelta(minutes=30))
+    assert policy.is_filtered(
+        _alert(acknowledged=True, starts_at=open_alert.starts_at), NOW
+    )
+    assert not policy.is_filtered(open_alert, NOW)
 
 
 def test_filter_alertmanager_noise_and_silence() -> None:
@@ -223,16 +248,19 @@ def test_filter_custom_window_and_timezone() -> None:
         window_end=time(11, 0),
         timezone=ZoneInfo("UTC"),
     )
-    cgi = _alert()
-    inside = datetime(2026, 8, 13, 10, 0, 0, tzinfo=UTC)
+    inside = datetime(2026, 8, 13, 10, 5, 0, tzinfo=UTC)
     outside = datetime(2026, 8, 13, 11, 0, 1, tzinfo=UTC)
-    assert not policy.is_filtered(cgi, inside)
-    assert policy.is_filtered(cgi, outside)
+    started = datetime(2026, 8, 13, 10, 0, 0, tzinfo=UTC)
+    keep = _alert(starts_at=started)
+    assert not policy.is_filtered(keep, inside)
+    assert policy.is_filtered(keep, outside)
 
 
 def test_filter_custom_duration_bounds() -> None:
     policy = AlertFilterPolicy(
-        min_duration_seconds=60,
+        hold_fast_seconds=60,
+        hold_critical_seconds=60,
+        hold_warning_seconds=60,
         max_duration_seconds=3600,
     )
     nine_min = _alert(starts_at=NOW - timedelta(minutes=9))
@@ -264,5 +292,66 @@ def test_filter_started_before_daemon_boot() -> None:
     assert not policy.is_filtered(after_boot, NOW)
     assert not policy.is_filtered(at_boot, NOW)
     assert policy.is_filtered(cgi_old, NOW)
-    assert not policy.is_filtered(cgi_unknown, NOW)
+    assert policy.is_filtered(cgi_unknown, NOW)
     assert naive_policy.is_filtered(naive_old, NOW)
+
+
+def test_filter_hold_classes_and_missing_start() -> None:
+    policy = AlertFilterPolicy()
+    info = _alert(
+        severity=Severity("info"),
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    generic = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        status_text="500",
+        starts_at=NOW - timedelta(minutes=9),
+    )
+    generic_ok = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        status_text="500",
+        starts_at=NOW - timedelta(minutes=10),
+    )
+    high_load = dict(alertname="HighLoad", desc="load average", status_text="load")
+    high_load_early = _alert(starts_at=NOW - timedelta(minutes=9), **high_load)
+    high_load_ok = _alert(starts_at=NOW - timedelta(minutes=10), **high_load)
+    critical = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        status_text="500",
+        severity=Severity("critical"),
+        starts_at=NOW - timedelta(minutes=3),
+    )
+    critical_early = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        status_text="500",
+        severity=Severity("critical"),
+        starts_at=NOW - timedelta(minutes=2),
+    )
+    down = _alert(
+        alertname="DOWN",
+        desc="host is down",
+        status_text="DOWN",
+        severity=Severity("warning"),
+        starts_at=NOW - timedelta(minutes=3),
+    )
+    pix_host = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        status_text="500",
+        host="spi-auto-pix-messenger-764b485446-s2xpx",
+        starts_at=NOW - timedelta(minutes=3),
+    )
+    assert policy.is_filtered(info, NOW)
+    assert policy.is_filtered(generic, NOW)
+    assert not policy.is_filtered(generic_ok, NOW)
+    assert policy.is_filtered(high_load_early, NOW)
+    assert not policy.is_filtered(high_load_ok, NOW)
+    assert policy.is_filtered(critical_early, NOW)
+    assert not policy.is_filtered(critical, NOW)
+    assert not policy.is_filtered(down, NOW)
+    assert policy.is_filtered(pix_host, NOW)
+    assert policy.is_filtered(_alert(), NOW)

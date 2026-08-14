@@ -38,7 +38,8 @@ Port           Port            Port        LedgerPort      Port
 | `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
 | `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` com host, sem `starts_at` |
 | `entities/severity.py` | Severidade normalizada |
-| `services/alert_filter.py` | Politica de ruido (ack, duracao/janela em Python, Watchdog, silenced/inhibited) |
+| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, Watchdog, silenced/inhibited) |
+| `services/alert_hold.py` | Classe de persistencia (rapido / transiente / CRITICAL / WARNING; INFO fora) |
 | `services/alert_view.py` | Cards stdout: Client, Host, Service, Status, Duration, Started, Status information |
 
 O dominio **nao** loga e **nao** conhece httpx nem `.env`.
@@ -97,7 +98,7 @@ Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
 Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
-Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`), `FILTER_DURATION_MIN_SECONDS` (default 600) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Duracao e horario sao calculados em Python a partir desses valores.
+Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`), `FILTER_HOLD_FAST_SECONDS` / `FILTER_HOLD_CRITICAL_SECONDS` (default 180), `FILTER_HOLD_WARNING_SECONDS` (default 600) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Hold-down por classe (tipo ganha de severidade); INFO nao dispara; sem inicio conhecido nao dispara. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Duracao e horario sao calculados em Python a partir desses valores.
 
 Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
 

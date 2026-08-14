@@ -32,6 +32,7 @@ Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert
 - `GoogleChatWebhookSink` envia o mesmo texto (`render_effective_alerts`), um POST por publish, com `Lock`; HTTP/rede: `poll.gchat.failed` e raises; o use case faz `release` do fingerprint.
 - Fluxo com ledger: `try_claim` → `publish` → `confirm`; fingerprint inclui `host` (`DEDUP_LEDGER_PATH` = arquivo com flock; vazio = memoria).
 - Inicio conhecido (`starts_at` ou duracao) anterior ao boot do daemon nao entra no snapshot.
+- Hold-down silencioso antes do snapshot: rapido/CRITICAL 3 min, WARNING/transiente 10 min; tipo ganha de severidade; INFO nao dispara.
 - Fuso = `FILTER_TIMEZONE` (worker injeta).
 - Ordenar CRITICAL, WARNING, demais; depois Client, Host, Service.
 - AM: Host de `hostname|host|pod|instance|application|namespace`; Info de `description|summary|message|title`.

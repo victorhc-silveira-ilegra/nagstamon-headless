@@ -13,7 +13,7 @@ A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um ev
 
 | Nivel | Quando |
 |-------|--------|
-| INFO | Caminho feliz: boot, ciclo, publish, finished |
+| INFO | Caminho feliz: boot, primeiro ciclo, publish, finished (claimed ou heartbeat) |
 | WARNING | Degradado, processo segue (fail-open, overlap, config vazia no boot) |
 | ERROR | Boot invalido ou `execute()` estoura (worker sai com exit 1) |
 | DEBUG | Apenas `exc_info` nas falhas; sem dumps extras |
@@ -24,8 +24,8 @@ A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um ev
 |--------|-------|--------|
 | `worker.started` | INFO | worker (uma vez) |
 | `worker.boot.failed` | ERROR | worker |
-| `poll.cycle.started` | INFO | worker |
-| `poll.cycle.finished` | INFO | worker |
+| `poll.cycle.started` | INFO | worker (so o primeiro ciclo) |
+| `poll.cycle.finished` | INFO | worker (primeiro ciclo, ou `claimed_count>0`) |
 | `poll.cycle.failed` | ERROR | worker |
 | `poll.cycle.skipped_in_flight` | WARNING | worker (`CycleGuard`) |
 | `poll.sink.published` | INFO | `StdoutAlertSink` |
@@ -36,8 +36,8 @@ A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um ev
 | `monitor.config.failed` | WARNING | `IniServerConfigAdapter` (fail-open) |
 | `monitor.config.empty` | WARNING | worker, uma vez se o primeiro ciclo tiver `servers_count=0` |
 
-Caminho feliz com um alerta novo (~4 INFO apos o boot): `started` → `sink.published` (`alerts_count=1`) → `gchat.published` (`alerts_count=1`) → `finished`. Com N claimed e ledger ligado: N pares `sink.published` / `gchat.published`, cada um com `alerts_count=1`.
-So duplicatas: `started` → `finished` (sem `published`; `skipped_duplicate_count` no finished).
+Caminho feliz com um alerta novo no primeiro ciclo (~4 INFO apos o boot): `started` → `sink.published` (`alerts_count=1`) → `gchat.published` (`alerts_count=1`) → `finished`. Com N claimed e ledger ligado: N pares `sink.published` / `gchat.published`, cada um com `alerts_count=1`.
+Ciclo ocioso depois do heartbeat: silencio (sem `started`/`finished`). Alerta novo depois do primeiro ciclo: `published` → `finished` (sem `started`).
 Ciclo sobreposto: `skipped_in_flight` (sem `started`).
 Fail-open de fetch/config/som: WARNING e o ciclo segue. Falha de Chat: WARNING, release do fingerprint, ciclo segue.
 
@@ -62,6 +62,7 @@ Setup: `presentation.logging.setup_logging(...)`.
 - `exc_info` so quando `LOG_LEVEL=DEBUG` em falhas de ciclo/fetch/Chat.
 - `monitor.config.empty` nao se repete a cada poll; `finished` ja leva `servers_count`.
 - Dedup nao emite evento extra: `finished` ja leva `skipped_duplicate_count`.
+- Ciclo ocioso nao emite `started`/`finished`; o primeiro ciclo e o heartbeat.
 - Webhook do Chat: query redigida em `webhook_host`.
 
 ## Exemplo (text)

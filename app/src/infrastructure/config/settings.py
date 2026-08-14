@@ -71,7 +71,9 @@ class Settings:
     filter_window_start: time
     filter_window_end: time
     filter_timezone: str
-    filter_duration_min_seconds: int
+    filter_hold_fast_seconds: int
+    filter_hold_critical_seconds: int
+    filter_hold_warning_seconds: int
     filter_duration_max_seconds: int
     sound_enabled: bool
     gchat_webhook_url: str
@@ -120,19 +122,31 @@ class Settings:
             "FILTER_WINDOW_END",
         )
         filter_timezone = _parse_timezone(os.environ.get("FILTER_TIMEZONE", ""))
-        filter_duration_min_seconds = _parse_positive_int(
-            os.environ.get("FILTER_DURATION_MIN_SECONDS", "600").strip() or "600",
-            "FILTER_DURATION_MIN_SECONDS",
+        filter_hold_fast_seconds = _parse_positive_int(
+            os.environ.get("FILTER_HOLD_FAST_SECONDS", "180").strip() or "180",
+            "FILTER_HOLD_FAST_SECONDS",
+        )
+        filter_hold_critical_seconds = _parse_positive_int(
+            os.environ.get("FILTER_HOLD_CRITICAL_SECONDS", "180").strip() or "180",
+            "FILTER_HOLD_CRITICAL_SECONDS",
+        )
+        filter_hold_warning_seconds = _parse_positive_int(
+            os.environ.get("FILTER_HOLD_WARNING_SECONDS", "600").strip() or "600",
+            "FILTER_HOLD_WARNING_SECONDS",
         )
         filter_duration_max_seconds = _parse_positive_int(
             os.environ.get("FILTER_DURATION_MAX_SECONDS", "86400").strip() or "86400",
             "FILTER_DURATION_MAX_SECONDS",
         )
-        if filter_duration_min_seconds >= filter_duration_max_seconds:
-            raise ValueError(
-                "FILTER_DURATION_MIN_SECONDS must be less than "
-                "FILTER_DURATION_MAX_SECONDS"
-            )
+        for hold_name, hold_value in (
+            ("FILTER_HOLD_FAST_SECONDS", filter_hold_fast_seconds),
+            ("FILTER_HOLD_CRITICAL_SECONDS", filter_hold_critical_seconds),
+            ("FILTER_HOLD_WARNING_SECONDS", filter_hold_warning_seconds),
+        ):
+            if hold_value >= filter_duration_max_seconds:
+                raise ValueError(
+                    f"{hold_name} must be less than FILTER_DURATION_MAX_SECONDS"
+                )
         sound_enabled = _parse_bool(os.environ.get("SOUND_ENABLED", "true"))
         gchat_webhook_url = os.environ.get("GCHAT_WEBHOOK_URL", "").strip()
         ledger_raw = os.environ.get("DEDUP_LEDGER_PATH", "").strip()
@@ -151,7 +165,9 @@ class Settings:
             filter_window_start=filter_window_start,
             filter_window_end=filter_window_end,
             filter_timezone=filter_timezone,
-            filter_duration_min_seconds=filter_duration_min_seconds,
+            filter_hold_fast_seconds=filter_hold_fast_seconds,
+            filter_hold_critical_seconds=filter_hold_critical_seconds,
+            filter_hold_warning_seconds=filter_hold_warning_seconds,
             filter_duration_max_seconds=filter_duration_max_seconds,
             sound_enabled=sound_enabled,
             gchat_webhook_url=gchat_webhook_url,

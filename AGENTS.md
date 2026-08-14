@@ -10,9 +10,9 @@ Projeto: Nagstamon Headless (DDD / Hexagonal) — polling de Alertmanager e Nagi
 4. Manter cobertura 100% e Conventional Commits.
 5. Config via `.env` na raiz (`SERVERS_DIR`, `PROXY_ADDR`, `VPN_*`, `REFRESH_INTERVAL`, `HTTP_*`, `DEDUP_*`, `FILTER_*`, `SOUND_*`, `GCHAT_*`, `LOG_*`). Proxy/VPN reais e webhook do Chat so no `.env` local.
 6. Manter docs em `docs/` alinhadas ao codigo (arquitetura, structure, engineering-*).
-7. Logs semanticos: INFO no caminho feliz, WARNING em fail-open/overlap, ERROR so em boot ou ciclo quebrado. Dominio e use case nao logam.
+7. Logs semanticos: INFO no caminho feliz (boot, primeiro ciclo, publish), WARNING em fail-open/overlap, ERROR so em boot ou ciclo quebrado. Dominio e use case nao logam. Ciclo ocioso nao emite started/finished.
 8. Snapshot no stdout e no Google Chat: mesmo card (Client, Host, Service, Status, Duration, Started, Status information em `domain/services/alert_view.py`); dedup persistente por fingerprint (inclui host) via ledger claim/confirm/release.
-9. Filtro de data/horario/intervalo so em Python (`starts_at` ou parse de `duration_str`); sem regex da aba Filters do GUI. Alerta com inicio conhecido anterior ao boot do processo nao entra no snapshot (stdout/Chat).
+9. Filtro de data/horario/intervalo so em Python (`starts_at` ou parse de `duration_str`); sem regex da aba Filters do GUI. Hold-down por classe (`FILTER_HOLD_*`): rapido/CRITICAL 3 min, WARNING/transiente 10 min; tipo ganha de severidade; INFO nao dispara. Alerta sem inicio conhecido ou com inicio anterior ao boot nao entra no snapshot.
 
 ## Comandos uteis
 

@@ -8,12 +8,13 @@ alwaysApply: true
 Itens marcados na aba Filters do Nagstamon = excluir do snapshot efetivo.
 
 - Acknowledged: excluir `acknowledged=True` (Nagios CGI com texto `ACKNOWLEDGED`). No Alertmanager, `silenced_by` continua como equivalente de ack.
-- Duracao e horario **so em Python**, valores no `.env`: visivel de `FILTER_DURATION_MIN_SECONDS` (600) ate menos de `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `0d 2h 15m`.
-- Janela: `now` em `[FILTER_WINDOW_START, FILTER_WINDOW_END]` (`13:30`–`18:00`) `FILTER_TIMEZONE` **e**, se o inicio for conhecido (`starts_at` ou duracao parseada), esse instante no mesmo intervalo **hoje**. CGI sem os dois so usa a janela de `now`.
-- Boot: se o inicio for conhecido e for anterior ao start do daemon (`not_before` injetado no worker), excluir — nao despejar alerta ja aberto no stdout/Chat. Sem inicio conhecido, nao aplica esse corte.
+- Duracao **so em Python**: hold-down por classe (`FILTER_HOLD_FAST_SECONDS` 180, `FILTER_HOLD_CRITICAL_SECONDS` 180, `FILTER_HOLD_WARNING_SECONDS` 600) ate menos de `FILTER_DURATION_MAX_SECONDS` (86400), via `starts_at` ou parse de `0d 2h 15m`. Sem inicio conhecido, nao dispara. INFO nao e paging.
+- Tipo ganha de severidade: DOWN/disco/cert/login = rapido; CPU/mem/load/fila/lock/ping = transiente (10 min). Keywords em alertname/desc/status, nao no host.
+- Janela: `now` em `[FILTER_WINDOW_START, FILTER_WINDOW_END]` (`13:30`–`18:00`) `FILTER_TIMEZONE` **e**, se o inicio for conhecido, esse instante no mesmo intervalo **hoje**.
+- Boot: inicio conhecido anterior ao start do daemon (`not_before`) exclui.
 - Ja existentes: texto de erro HTTP, Watchdog/InfoInhibitor, states suppressed/pending/unprocessed, inhibited.
 
-Construtor de `AlertFilterPolicy` recebe janela, fuso, limites de duracao e `not_before` (boot do worker). Dominio e use case **nao** logam.
+Construtor de `AlertFilterPolicy` recebe janela, fuso, holds (`FILTER_HOLD_*`), teto de duracao e `not_before` (boot do worker). Dominio e use case **nao** logam.
 
 Som: port `play_new_alert()` so apos `confirm` de pelo menos um alerta (dedup off: lista efetiva nao vazia apos publish). Adapter fail-open (`poll.sound.failed` WARNING). `SOUND_ENABLED=true` no `.env`; compose pode forcar `false`.
 

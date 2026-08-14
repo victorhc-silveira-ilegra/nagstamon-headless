@@ -8,7 +8,7 @@
 
 ## Unreleased
 
-- Filtros alinhados ao Nagstamon: ack, duracao e janela via `.env` (`FILTER_WINDOW_*`, `FILTER_TIMEZONE`, `FILTER_DURATION_*`). Data/horario/intervalo so em Python.
+- Filtros alinhados ao Nagstamon: ack, hold-down (`FILTER_HOLD_*`) e janela via `.env`. Data/horario/intervalo so em Python.
 - Som fail-open (`SOUND_ENABLED`) apos publish de alerta claimed; evento `poll.sound.failed` em WARNING.
 - Snapshot stdout em cards: Client, Host, Service, Status, Duration, Started, Status information.
 - Google Chat: mesmo card via `GCHAT_WEBHOOK_URL`; ledger persistente (`DEDUP_LEDGER_PATH`) com claim/confirm por alerta; `poll.gchat.failed` libera o fingerprint.
@@ -17,7 +17,7 @@
 - Cards: Duration com espacos normalizados; Started no CGI via duracao, formato BR `DD/MM/YYYY HH:MM:SS`; aspas envolventes do AM removidas; logs no stdout para nao fatiar o snapshot no `docker logs`.
 - AM: Host tambem de `pod` e `namespace`. `make docker-logs` segue INFO + cards, sem prefixo/timestamps do Compose (`F=0` uma vez; `LEVEL=all` todos os niveis; `T=1` / `P=1` para religar).
 - `make docker-smoke`: VPN/proxy + um ciclo real (`docker run` one-shot, `--max-cycles 1`) com os `*.conf` do host; nao disputa o container do `docker-up`.
-- Dedup nao emite `poll.alert.skipped_duplicate`; a contagem fica so em `poll.cycle.finished`.
+- Hold-down SRE: `FILTER_HOLD_FAST/CRITICAL` 180s, `FILTER_HOLD_WARNING` 600s; INFO e sem inicio conhecido nao disparam; tipo ganha de severidade.
 - Nao despacha alerta cujo inicio conhecido e anterior ao boot do daemon.
 - Card: labels em negrito (markdown do Chat) e colunas alinhadas com NBSP.
 

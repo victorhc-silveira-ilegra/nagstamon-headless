@@ -6,6 +6,12 @@ from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from domain.entities.alert import Alert
+from domain.services.alert_hold import (
+    HOLD_CRITICAL_SECONDS,
+    HOLD_FAST_SECONDS,
+    HOLD_WARNING_SECONDS,
+    hold_seconds,
+)
 
 STATUS_INFO_FILTER = re.compile(
     r"(?i)("
@@ -14,7 +20,6 @@ STATUS_INFO_FILTER = re.compile(
 )
 NOISE_ALERTNAMES = frozenset({"watchdog", "infoinhibitor"})
 SKIP_STATES = frozenset({"suppressed", "pending", "unprocessed"})
-MIN_DURATION_SECONDS = 600
 MAX_DURATION_SECONDS = 86400
 DURATION_UNITS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
 DEFAULT_FILTER_TIMEZONE = ZoneInfo("America/Sao_Paulo")
@@ -48,14 +53,18 @@ class AlertFilterPolicy:
         window_start: time = DEFAULT_WINDOW_START,
         window_end: time = DEFAULT_WINDOW_END,
         timezone: ZoneInfo | None = None,
-        min_duration_seconds: int = MIN_DURATION_SECONDS,
+        hold_fast_seconds: int = HOLD_FAST_SECONDS,
+        hold_critical_seconds: int = HOLD_CRITICAL_SECONDS,
+        hold_warning_seconds: int = HOLD_WARNING_SECONDS,
         max_duration_seconds: int = MAX_DURATION_SECONDS,
         not_before: datetime | None = None,
     ) -> None:
         self._window_start = window_start
         self._window_end = window_end
         self._timezone = timezone or DEFAULT_FILTER_TIMEZONE
-        self._min_duration_seconds = min_duration_seconds
+        self._hold_fast_seconds = hold_fast_seconds
+        self._hold_critical_seconds = hold_critical_seconds
+        self._hold_warning_seconds = hold_warning_seconds
         self._max_duration_seconds = max_duration_seconds
         self._not_before = not_before
 
@@ -87,23 +96,29 @@ class AlertFilterPolicy:
         status_text = alert.status_text or f"{alert.alertname} {alert.desc}"
         if STATUS_INFO_FILTER.search(status_text):
             return True
-        start = self._start_instant(alert, now)
-        if start is not None:
-            if self._not_before is not None and start < _aware(self._not_before):
-                return True
-            duration_seconds = (_aware(now) - start).total_seconds()
-            if (
-                duration_seconds < self._min_duration_seconds
-                or duration_seconds >= self._max_duration_seconds
-            ):
-                return True
-            if not self._starts_at_in_window_today(start, now):
-                return True
         if alert.alertname.lower() in NOISE_ALERTNAMES:
             return True
         if alert.alert_state in SKIP_STATES:
             return True
         if alert.silenced_by or alert.inhibited_by:
+            return True
+        start = self._start_instant(alert, now)
+        if start is None:
+            return True
+        if self._not_before is not None and start < _aware(self._not_before):
+            return True
+        needed = hold_seconds(
+            alert,
+            fast=self._hold_fast_seconds,
+            critical=self._hold_critical_seconds,
+            warning=self._hold_warning_seconds,
+        )
+        duration_seconds = (_aware(now) - start).total_seconds()
+        if needed is None or duration_seconds < needed:
+            return True
+        if duration_seconds >= self._max_duration_seconds:
+            return True
+        if not self._starts_at_in_window_today(start, now):
             return True
         return not self._in_daily_window(now)
 

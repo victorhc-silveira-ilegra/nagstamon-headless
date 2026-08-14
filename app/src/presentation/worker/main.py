@@ -94,7 +94,9 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
             window_start=settings.filter_window_start,
             window_end=settings.filter_window_end,
             timezone=ZoneInfo(settings.filter_timezone),
-            min_duration_seconds=settings.filter_duration_min_seconds,
+            hold_fast_seconds=settings.filter_hold_fast_seconds,
+            hold_critical_seconds=settings.filter_hold_critical_seconds,
+            hold_warning_seconds=settings.filter_hold_warning_seconds,
             max_duration_seconds=settings.filter_duration_max_seconds,
             not_before=clock.now(),
         ),
@@ -104,8 +106,11 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
     )
 
 
-def run_cycle(use_case: PollMonitorsUseCase) -> PollCycleResult:
-    log_event(logger, logging.INFO, POLL_CYCLE_STARTED)
+def run_cycle(
+    use_case: PollMonitorsUseCase, *, heartbeat: bool = True
+) -> PollCycleResult:
+    if heartbeat:
+        log_event(logger, logging.INFO, POLL_CYCLE_STARTED)
     started_at = time.monotonic()
     try:
         result = use_case.execute()
@@ -118,17 +123,18 @@ def run_cycle(use_case: PollMonitorsUseCase) -> PollCycleResult:
             exc_info=logger.isEnabledFor(logging.DEBUG),
         )
         raise
-    log_event(
-        logger,
-        logging.INFO,
-        POLL_CYCLE_FINISHED,
-        servers_count=result.servers_count,
-        alerts_count=result.alerts_count,
-        claimed_count=result.claimed_count,
-        skipped_duplicate_count=result.skipped_duplicate_count,
-        duration_ms=int((time.monotonic() - started_at) * 1000),
-        status="ok",
-    )
+    if heartbeat or result.claimed_count:
+        log_event(
+            logger,
+            logging.INFO,
+            POLL_CYCLE_FINISHED,
+            servers_count=result.servers_count,
+            alerts_count=result.alerts_count,
+            claimed_count=result.claimed_count,
+            skipped_duplicate_count=result.skipped_duplicate_count,
+            duration_ms=int((time.monotonic() - started_at) * 1000),
+            status="ok",
+        )
     return result
 
 
@@ -175,6 +181,7 @@ def run(
     guard = cycle_guard or CycleGuard()
     cycles_run = 0
     config_empty_emitted = False
+    heartbeat = True
     while True:
         if not guard.try_enter():
             log_event(logger, logging.WARNING, POLL_CYCLE_SKIPPED_IN_FLIGHT)
@@ -185,9 +192,10 @@ def run(
             continue
         try:
             try:
-                result = run_cycle(resolved_use_case)
+                result = run_cycle(resolved_use_case, heartbeat=heartbeat)
             except Exception:
                 return 1
+            heartbeat = False
             if not config_empty_emitted:
                 if result.servers_count == 0:
                     log_event(

@@ -8,7 +8,7 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   ├── src/
 │   │   ├── domain/
 │   │   │   ├── entities/
-│   │   │   └── services/alert_filter.py, alert_view.py
+│   │   │   └── services/alert_filter.py, alert_hold.py, alert_view.py
 │   │   ├── application/
 │   │   │   ├── ports/
 │   │   │   └── use_cases/poll_monitors.py

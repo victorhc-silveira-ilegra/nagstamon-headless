@@ -16,9 +16,9 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 2. `Settings.from_env()` carrega `.env` (salvo `NAGSTAMON_DISABLE_DOTENV`); falha emite `worker.boot.failed`
 3. Setup de logging (`LOG_LEVEL` / `LOG_FORMAT` / `LOG_FILE`) e `worker.started`
 4. `CycleGuard.try_enter()`; se ocupado emite `poll.cycle.skipped_in_flight` (WARNING)
-5. Emite `poll.cycle.started`
+5. Emite `poll.cycle.started` no primeiro ciclo
 6. `PollMonitorsUseCase.execute()`: config → fetch → filtro → claim/publish/confirm por alerta (stdout + Google Chat) → som (se claimed)
-7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`) e `poll.cycle.finished` (com `duration_ms` e `skipped_duplicate_count`) ou `poll.cycle.failed`
+7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`) e `poll.cycle.finished` (primeiro ciclo, ou se houver claimed; com `duration_ms` e `skipped_duplicate_count`) ou `poll.cycle.failed`
 8. Sleep `REFRESH_INTERVAL` e repete
 
 ## Ports e adapters
@@ -36,11 +36,11 @@ Ports sao `typing.Protocol` (sem ABC).
 
 ## Domain services
 
-`AlertFilterPolicy` (janela e fuso injetados pelo worker a partir do `.env`):
+`hold_seconds` (`domain/services/alert_hold.py`): classifica persistencia (keywords em alertname/desc/status, nao no host). `AlertFilterPolicy` (janela, fuso e holds injetados pelo worker a partir do `.env`):
 
 - `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
-- duracao e horario so em Python, via `.env`: &lt; `FILTER_DURATION_MIN_SECONDS` ou ≥ `FILTER_DURATION_MAX_SECONDS` (defaults 600 / 86400) via `starts_at` ou parse de `duration_str`; sem regex do GUI
-- janela diaria `[FILTER_WINDOW_START, FILTER_WINDOW_END]` em `FILTER_TIMEZONE`: `now` no intervalo **e**, se o inicio for conhecido, esse instante no mesmo intervalo hoje; CGI sem `starts_at`/`duration_str` so usa a janela de `now`
+- duracao so em Python: hold-down `FILTER_HOLD_FAST_SECONDS` / `FILTER_HOLD_CRITICAL_SECONDS` (180) e `FILTER_HOLD_WARNING_SECONDS` (600) ate &lt; `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `duration_str`; tipo (DOWN/disco vs CPU/load) ganha de severidade; INFO e sem inicio conhecido nao disparam
+- janela diaria `[FILTER_WINDOW_START, FILTER_WINDOW_END]` em `FILTER_TIMEZONE`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje
 - inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
@@ -88,7 +88,7 @@ Fakes/Mocks: fakes dos ports, `httpx.BaseTransport`, sleeper injetavel no worker
 - Compose: `docker compose --env-file .env ...`
 - Python: `load_project_dotenv(override=True)` em `Settings.from_env()`
 - Nunca commitar proxy interno real nem senhas dos `.conf`
-- `FILTER_WINDOW_START` / `FILTER_WINDOW_END` (`HH:MM`), `FILTER_TIMEZONE` (IANA), `FILTER_DURATION_MIN_SECONDS` / `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria)
+- `FILTER_WINDOW_START` / `FILTER_WINDOW_END` (`HH:MM`), `FILTER_TIMEZONE` (IANA), `FILTER_HOLD_FAST_SECONDS` / `FILTER_HOLD_CRITICAL_SECONDS` / `FILTER_HOLD_WARNING_SECONDS`, `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria)
 
 ## Entrypoints
 
