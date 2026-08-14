@@ -4,9 +4,9 @@ import re
 
 from domain.entities.alert import Alert
 
-HOLD_FAST_SECONDS = 180
-HOLD_CRITICAL_SECONDS = 180
-HOLD_WARNING_SECONDS = 600
+HOLD_FAST_SECONDS = 600
+HOLD_CRITICAL_SECONDS = 900
+HOLD_WARNING_SECONDS = 1200
 _PAGING = frozenset({"CRITICAL", "WARNING"})
 _FAST = re.compile(
     r"(?i)(?:"

@@ -38,9 +38,9 @@ Port           Port            Port        LedgerPort      Port
 | `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
 | `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` com host, sem `starts_at` |
 | `entities/severity.py` | Severidade normalizada |
-| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, Watchdog, silenced/inhibited) |
-| `services/alert_hold.py` | Classe de persistencia (rapido / transiente / CRITICAL / WARNING; INFO fora) |
-| `services/alert_view.py` | Cards stdout/Chat: colunas NBSP; `format_chat_text` (bloco monoespaçado) |
+| `services/alert_filter.py` | Politica de ruido (ack, hold-down por criticidade, janela, Watchdog, silenced/inhibited) |
+| `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
+| `services/alert_view.py` | Snapshot texto: Client, Host, Service, Status, Duration, Started, Status information |
 
 O dominio **nao** loga e **nao** conhece httpx nem `.env`.
 
@@ -68,8 +68,8 @@ O use case **nao** loga. Paralelismo HTTP fica no adapter composto.
 | `adapters/alertmanager_http.py` | GET `/api/v2/alerts` via httpx |
 | `adapters/nagios_cgi_http.py` | GET CGI HTML (tabelas aninhadas); host/service/duracao/ack |
 | `adapters/composite_monitor_client.py` | Roteia AM vs Nagios em ThreadPoolExecutor |
-| `adapters/stdout_alert_sink.py` | Cards de alertas efetivos no stdout (fuso injetado) |
-| `adapters/google_chat_http.py` | POST do mesmo card no webhook; loga `poll.gchat.failed` e raises para o use case dar release |
+| `adapters/stdout_alert_sink.py` | Snapshot de alertas efetivos no stdout (fuso injetado) |
+| `adapters/google_chat_http.py` | POST da mesma mensagem `text` no webhook; loga `poll.gchat.failed` e raises para o use case dar release |
 | `adapters/composite_alert_sink.py` | Encadeia stdout e Google Chat no mesmo `publish` |
 | `adapters/in_memory_alert_dispatch_ledger.py` | Dedup com `threading.Lock` quando `DEDUP_LEDGER_PATH` vazio |
 | `adapters/file_alert_dispatch_ledger.py` | JSON + `fcntl.flock`; pending/sent; sobrevive a restart |
@@ -98,8 +98,16 @@ Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
 Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
-Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`), `FILTER_HOLD_FAST_SECONDS` / `FILTER_HOLD_CRITICAL_SECONDS` (default 180), `FILTER_HOLD_WARNING_SECONDS` (default 600) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Hold-down por classe (tipo ganha de severidade); INFO nao dispara; sem inicio conhecido nao dispara. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Duracao e horario sao calculados em Python a partir desses valores.
+Filtros de janela: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
+
+Hold-down por criticidade (tipo ganha de severidade; keywords so em alertname/desc/status, nao no host):
+
+| Criticidade | Quem | Env | Default |
+|-------------|------|-----|---------|
+| Muito critico | DOWN/unreachable, disco/filesystem, cert/TLS, pagamento/login | `FILTER_HOLD_FAST_SECONDS` | 600 (10 min) |
+| Mediano | CRITICAL restante | `FILTER_HOLD_CRITICAL_SECONDS` | 900 (15 min) |
+| Baixo | WARNING restante e CPU/mem/load/fila/lock/ping/latencia/flap | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
 
 Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
 
-Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um card por alerta claimed (`publish([alert])`); o texto vai ao webhook em bloco monoespaçado (`format_chat_text`) para a tabulacao igual ao stdout. Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.
+Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um alerta claimed por `publish([alert])`; o mesmo texto do stdout vai ao webhook como mensagem `{"text": ...}` (sem cards estruturados do Chat e sem fence monoespaçado). Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.

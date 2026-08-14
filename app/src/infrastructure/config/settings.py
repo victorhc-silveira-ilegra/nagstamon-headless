@@ -123,15 +123,15 @@ class Settings:
         )
         filter_timezone = _parse_timezone(os.environ.get("FILTER_TIMEZONE", ""))
         filter_hold_fast_seconds = _parse_positive_int(
-            os.environ.get("FILTER_HOLD_FAST_SECONDS", "180").strip() or "180",
+            os.environ.get("FILTER_HOLD_FAST_SECONDS", "600").strip() or "600",
             "FILTER_HOLD_FAST_SECONDS",
         )
         filter_hold_critical_seconds = _parse_positive_int(
-            os.environ.get("FILTER_HOLD_CRITICAL_SECONDS", "180").strip() or "180",
+            os.environ.get("FILTER_HOLD_CRITICAL_SECONDS", "900").strip() or "900",
             "FILTER_HOLD_CRITICAL_SECONDS",
         )
         filter_hold_warning_seconds = _parse_positive_int(
-            os.environ.get("FILTER_HOLD_WARNING_SECONDS", "600").strip() or "600",
+            os.environ.get("FILTER_HOLD_WARNING_SECONDS", "1200").strip() or "1200",
             "FILTER_HOLD_WARNING_SECONDS",
         )
         filter_duration_max_seconds = _parse_positive_int(

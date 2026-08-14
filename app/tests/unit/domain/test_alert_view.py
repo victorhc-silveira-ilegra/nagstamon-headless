@@ -10,7 +10,6 @@ from domain.services.alert_view import (
     LABEL_WIDTH,
     MISSING,
     NBSP,
-    format_chat_text,
     format_duration,
     format_started,
     host_value,
@@ -196,19 +195,10 @@ def test_render_default_timezone_and_placeholders() -> None:
     assert _row("Service", "--") in text
 
 
-def test_format_chat_text_wraps_monospace_and_sanitizes_fence() -> None:
-    card = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
-    wrapped = format_chat_text(card)
-    assert wrapped.startswith("```\n")
-    assert wrapped.endswith("\n```")
-    assert wrapped[4:-4] == card
-    assert format_chat_text("before ``` after") == "```\nbefore ''' after\n```"
-
-
-def test_render_keeps_markup_chars_in_values() -> None:
+def test_render_escapes_chat_markup_in_values() -> None:
     text = render_effective_alerts(
         [_alert(status_text="disk *full* _now_")],
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert "disk *full* _now_" in text
+    assert "disk \\*full\\* \\_now\\_" in text

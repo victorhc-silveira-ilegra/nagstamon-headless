@@ -9,11 +9,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from domain.entities.alert import Alert
-from domain.services.alert_view import (
-    DISPLAY_TIMEZONE,
-    format_chat_text,
-    render_effective_alerts,
-)
+from domain.services.alert_view import DISPLAY_TIMEZONE, render_effective_alerts
 from infrastructure.adapters.http_client import USER_AGENT
 from infrastructure.logging import (
     POLL_GCHAT_FAILED,
@@ -52,9 +48,7 @@ class GoogleChatWebhookSink:
     def publish(self, alerts: Sequence[Alert], *, fetched_at: datetime) -> None:
         if not alerts:
             return
-        text = format_chat_text(
-            render_effective_alerts(alerts, fetched_at, self._timezone)
-        )
+        text = render_effective_alerts(alerts, fetched_at, self._timezone)
         with self._lock:
             try:
                 response = self._client.post(self._webhook_url, json={"text": text})

@@ -1,11 +1,11 @@
 ---
-description: Snapshot stdout/Chat de alerta efetivo em cards (Client Host Service Status Duration Started Info) e despacho por claimed
+description: Snapshot stdout/Chat de alerta efetivo em mensagem texto (Client Host Service Status Duration Started Info), hold-down por criticidade e despacho por claimed
 alwaysApply: true
 ---
 
 # Snapshot de alerta (stdout e Chat)
 
-A saida operacional (sink, nao log) e um **card por alerta**, gerado em `domain/services/alert_view.py`. Nao voltar ao one-liner `[SEVERITY] server | name (app): desc`.
+A saida operacional (sink, nao log) e um **bloco por alerta**, gerado em `domain/services/alert_view.py`. Nao voltar ao one-liner `[SEVERITY] server | name (app): desc`.
 
 Campos e fontes:
 
@@ -17,6 +17,6 @@ Campos e fontes:
 - Started = `starts_at` no fuso, ou `fetched_at` menos a duracao parseada (CGI), formato BR `DD/MM/YYYY HH:MM:SS`
 - Status information = `status_text` ou `desc`
 
-Placeholder (`N/A`, `NagiosAlert`, `CGI Service`, vazio) vira `--`. CRITICAL antes de WARNING. Informacao longa quebra na coluna. Labels com `*Label:*` e colunas com NBSP (gutter ate `Status information:` + 1 NBSP). Dominio nao loga. Google Chat recebe o card em bloco monoespaçado (`format_chat_text`) para a tabulacao bater com o stdout.
+Placeholder (`N/A`, `NagiosAlert`, `CGI Service`, vazio) vira `--`. CRITICAL antes de WARNING. Informacao longa quebra na coluna. Labels em `*negrito*` (Chat); colunas com NBSP (gutter ate `Status information:` + 1 NBSP). Dominio nao loga. Webhook do Chat = mensagem de texto (`{"text": ...}`), sem cards estruturados e sem fence monoespaçado.
 
-Com ledger (`DEDUP_ENABLED`): um `publish([alert])` por claimed — cabecalho `1 alerta efetivo`, `#1`. Com `GCHAT_WEBHOOK_URL`, o mesmo texto vai ao Chat (um POST); falha loga `poll.gchat.failed` e raises; use case `release` e segue. Fluxo: `try_claim` → `publish` → `confirm`. Fingerprint inclui `host`. `DEDUP_LEDGER_PATH` persistente (flock); vazio = memoria. Alerta com inicio anterior ao boot do daemon nao e claimed. Hold-down silencioso (rapido/CRITICAL 3 min, WARNING/transiente 10 min; tipo ganha de severidade; INFO nao dispara) antes do snapshot.
+Com ledger (`DEDUP_ENABLED`): um `publish([alert])` por claimed — cabecalho `1 alerta efetivo`, `#1`. Com `GCHAT_WEBHOOK_URL`, o mesmo texto vai ao Chat (um POST); falha loga `poll.gchat.failed` e raises; use case `release` e segue. Fluxo: `try_claim` → `publish` → `confirm`. Fingerprint inclui `host`. `DEDUP_LEDGER_PATH` persistente (flock); vazio = memoria. Alerta com inicio anterior ao boot do daemon nao e claimed. Hold-down silencioso (muito critico 10 min / mediano 15 min / baixo 20 min; tipo ganha de severidade; INFO nao dispara) antes do snapshot.

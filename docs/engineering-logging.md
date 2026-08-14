@@ -7,7 +7,7 @@ Orquestrar o daemon com poucos eventos nomeados, sem dump de payload JSON/HTML n
 API: `log_event(logger, level, event, **fields)` em `infrastructure/logging/emit.py`.
 Constantes em `infrastructure/logging/events.py`.
 
-A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um evento de log. O handler de log tambem escreve em stdout para o `docker logs` nao entremear stderr no meio do card. Dominio e use case **nao** logam.
+A lista de alertas efetivos no stdout e o **sink do produto** (snapshot texto), nao um evento de log. O handler de log tambem escreve em stdout para o `docker logs` nao entremear stderr no meio do snapshot. Dominio e use case **nao** logam.
 
 ## Niveis
 

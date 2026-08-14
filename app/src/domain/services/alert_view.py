@@ -88,20 +88,24 @@ def status_information(alert: Alert) -> str:
     return display_value(alert.desc)
 
 
+def _markup_value(value: str) -> str:
+    return (
+        value.replace("*", "\\*")
+        .replace("_", "\\_")
+        .replace("~", "\\~")
+        .replace("`", "\\`")
+    )
+
+
 def _labeled(label: str, value: str) -> str:
     visible = f"{label}:"
     prefix = f"*{visible}*"
     gutter = (NBSP * (LABEL_WIDTH - len(visible))) + NBSP
-    wrapped = textwrap.wrap(value, width=INFO_WRAP) or [MISSING]
+    wrapped = textwrap.wrap(_markup_value(value), width=INFO_WRAP) or [MISSING]
     hang = NBSP * (LABEL_WIDTH + 3)
     first = f"{prefix}{gutter}{wrapped[0]}"
     extra = [f"{hang}{part}" for part in wrapped[1:]]
     return "\n".join([first, *extra])
-
-
-def format_chat_text(text: str) -> str:
-    safe = text.replace("```", "'''")
-    return f"```\n{safe}\n```"
 
 
 def _sort_key(alert: Alert) -> tuple[int, str, str, str]:

@@ -68,9 +68,9 @@ def _settings(tmp_path: Path) -> Settings:
         filter_window_start=time(13, 30),
         filter_window_end=time(18, 0),
         filter_timezone="America/Sao_Paulo",
-        filter_hold_fast_seconds=180,
-        filter_hold_critical_seconds=180,
-        filter_hold_warning_seconds=600,
+        filter_hold_fast_seconds=600,
+        filter_hold_critical_seconds=900,
+        filter_hold_warning_seconds=1200,
         filter_duration_max_seconds=86400,
         sound_enabled=False,
         gchat_webhook_url="",
@@ -84,9 +84,9 @@ def test_build_use_case_empty_dir(tmp_path: Path) -> None:
     assert result.servers_count == 0
     assert result.alerts_count == 0
     assert use_case._filter_policy._not_before is not None
-    assert use_case._filter_policy._hold_fast_seconds == 180
-    assert use_case._filter_policy._hold_critical_seconds == 180
-    assert use_case._filter_policy._hold_warning_seconds == 600
+    assert use_case._filter_policy._hold_fast_seconds == 600
+    assert use_case._filter_policy._hold_critical_seconds == 900
+    assert use_case._filter_policy._hold_warning_seconds == 1200
 
 
 def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:

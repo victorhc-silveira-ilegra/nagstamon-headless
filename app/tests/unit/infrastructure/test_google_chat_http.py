@@ -9,11 +9,7 @@ import pytest
 
 from domain.entities.alert import Alert
 from domain.entities.severity import Severity
-from domain.services.alert_view import (
-    DISPLAY_TIMEZONE,
-    format_chat_text,
-    render_effective_alerts,
-)
+from domain.services.alert_view import DISPLAY_TIMEZONE, render_effective_alerts
 from infrastructure.adapters.google_chat_http import (
     GoogleChatDeliveryError,
     GoogleChatWebhookSink,
@@ -92,9 +88,8 @@ def test_gchat_posts_same_card_text(
     request = transport.requests[0]
     assert str(request.url).startswith("https://chat.googleapis.com/")
     body = json.loads(request.content)
-    expected = format_chat_text(render_effective_alerts([alert], NOW, DISPLAY_TIMEZONE))
+    expected = render_effective_alerts([alert], NOW, DISPLAY_TIMEZONE)
     assert body == {"text": expected}
-    assert body["text"].startswith("```\n")
     assert "*Client:*" in body["text"]
     assert "core" in body["text"]
     assert _has_event(caplog, POLL_GCHAT_PUBLISHED)

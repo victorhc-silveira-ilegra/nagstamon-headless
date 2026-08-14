@@ -99,9 +99,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.filter_window_end.hour == 18
     assert settings.filter_window_end.minute == 0
     assert settings.filter_timezone == "America/Sao_Paulo"
-    assert settings.filter_hold_fast_seconds == 180
-    assert settings.filter_hold_critical_seconds == 180
-    assert settings.filter_hold_warning_seconds == 600
+    assert settings.filter_hold_fast_seconds == 600
+    assert settings.filter_hold_critical_seconds == 900
+    assert settings.filter_hold_warning_seconds == 1200
     assert settings.filter_duration_max_seconds == 86400
     assert settings.sound_enabled is True
     assert settings.gchat_webhook_url == ""
@@ -291,9 +291,9 @@ def test_settings_blank_duration_bounds(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("FILTER_HOLD_WARNING_SECONDS", "  ")
     monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "  ")
     settings = Settings.from_env()
-    assert settings.filter_hold_fast_seconds == 180
-    assert settings.filter_hold_critical_seconds == 180
-    assert settings.filter_hold_warning_seconds == 600
+    assert settings.filter_hold_fast_seconds == 600
+    assert settings.filter_hold_critical_seconds == 900
+    assert settings.filter_hold_warning_seconds == 1200
     assert settings.filter_duration_max_seconds == 86400
 
 
@@ -301,6 +301,8 @@ def test_settings_rejects_hold_not_less_than_max(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_HOLD_FAST_SECONDS", "60")
+    monkeypatch.setenv("FILTER_HOLD_CRITICAL_SECONDS", "60")
     monkeypatch.setenv("FILTER_HOLD_WARNING_SECONDS", "86400")
     monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "600")
     with pytest.raises(ValueError, match="FILTER_HOLD_WARNING_SECONDS"):
