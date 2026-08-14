@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.1.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.0.0...v1.1.0) (2026-08-14)
+
 ## Unreleased
 
 - Filtros alinhados ao Nagstamon: ack, duracao e janela via `.env` (`FILTER_WINDOW_*`, `FILTER_TIMEZONE`, `FILTER_DURATION_*`). Data/horario/intervalo so em Python.
