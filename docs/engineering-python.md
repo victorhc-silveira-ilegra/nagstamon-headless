@@ -18,7 +18,7 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 4. `CycleGuard.try_enter()`; se ocupado emite `poll.cycle.skipped_in_flight` (WARNING)
 5. Emite `poll.cycle.started`
 6. `PollMonitorsUseCase.execute()`: config → fetch → filtro → claim/publish/confirm por alerta (stdout + Google Chat) → som (se claimed)
-7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`), `poll.alert.skipped_duplicate` (se houver), `poll.cycle.finished` (com `duration_ms`) ou `poll.cycle.failed`
+7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`) e `poll.cycle.finished` (com `duration_ms` e `skipped_duplicate_count`) ou `poll.cycle.failed`
 8. Sleep `REFRESH_INTERVAL` e repete
 
 ## Ports e adapters

@@ -28,7 +28,6 @@ A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um ev
 | `poll.cycle.finished` | INFO | worker |
 | `poll.cycle.failed` | ERROR | worker |
 | `poll.cycle.skipped_in_flight` | WARNING | worker (`CycleGuard`) |
-| `poll.alert.skipped_duplicate` | INFO | worker (contagem, sem payload) |
 | `poll.sink.published` | INFO | `StdoutAlertSink` |
 | `poll.gchat.published` | INFO | `GoogleChatWebhookSink` (lista claimed nao vazia) |
 | `poll.gchat.failed` | WARNING | `GoogleChatWebhookSink` (HTTP/rede; raises apos log; use case libera o claim) |
@@ -38,7 +37,7 @@ A lista de alertas efetivos no stdout e o **sink do produto** (cards), nao um ev
 | `monitor.config.empty` | WARNING | worker, uma vez se o primeiro ciclo tiver `servers_count=0` |
 
 Caminho feliz com um alerta novo (~4 INFO apos o boot): `started` → `sink.published` (`alerts_count=1`) → `gchat.published` (`alerts_count=1`) → `finished`. Com N claimed e ledger ligado: N pares `sink.published` / `gchat.published`, cada um com `alerts_count=1`.
-So duplicatas: `started` → `skipped_duplicate` → `finished` (sem `published`).
+So duplicatas: `started` → `finished` (sem `published`; `skipped_duplicate_count` no finished).
 Ciclo sobreposto: `skipped_in_flight` (sem `started`).
 Fail-open de fetch/config/som: WARNING e o ciclo segue. Falha de Chat: WARNING, release do fingerprint, ciclo segue.
 
@@ -62,6 +61,7 @@ Setup: `presentation.logging.setup_logging(...)`.
 - Sem dump de body HTTP ou lista de alertas em INFO.
 - `exc_info` so quando `LOG_LEVEL=DEBUG` em falhas de ciclo/fetch/Chat.
 - `monitor.config.empty` nao se repete a cada poll; `finished` ja leva `servers_count`.
+- Dedup nao emite evento extra: `finished` ja leva `skipped_duplicate_count`.
 - Webhook do Chat: query redigida em `webhook_host`.
 
 ## Exemplo (text)

@@ -25,7 +25,6 @@ from infrastructure.adapters.system_clock import SystemClock
 from infrastructure.config.settings import Settings
 from infrastructure.logging import (
     MONITOR_CONFIG_EMPTY,
-    POLL_ALERT_SKIPPED_DUPLICATE,
     POLL_CYCLE_FAILED,
     POLL_CYCLE_FINISHED,
     POLL_CYCLE_SKIPPED_IN_FLIGHT,
@@ -117,13 +116,6 @@ def run_cycle(use_case: PollMonitorsUseCase) -> PollCycleResult:
             exc_info=logger.isEnabledFor(logging.DEBUG),
         )
         raise
-    if result.skipped_duplicate_count:
-        log_event(
-            logger,
-            logging.INFO,
-            POLL_ALERT_SKIPPED_DUPLICATE,
-            skipped_count=result.skipped_duplicate_count,
-        )
     log_event(
         logger,
         logging.INFO,

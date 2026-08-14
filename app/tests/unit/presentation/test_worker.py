@@ -15,7 +15,6 @@ from infrastructure.adapters.in_memory_alert_dispatch_ledger import (
 from infrastructure.config.settings import Settings
 from infrastructure.logging.events import (
     MONITOR_CONFIG_EMPTY,
-    POLL_ALERT_SKIPPED_DUPLICATE,
     POLL_CYCLE_FAILED,
     POLL_CYCLE_FINISHED,
     POLL_CYCLE_SKIPPED_IN_FLIGHT,
@@ -297,7 +296,7 @@ def test_run_cycle_debug_exc_info() -> None:
         run_cycle(fake)  # type: ignore[arg-type]
 
 
-def test_run_logs_skipped_duplicates(
+def test_run_does_not_log_skipped_duplicates_event(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     reset_logging_state()
@@ -316,7 +315,8 @@ def test_run_logs_skipped_duplicates(
     )
     assert code == 0
     captured = _captured(capsys)
-    assert POLL_ALERT_SKIPPED_DUPLICATE in captured
+    assert "poll.alert.skipped_duplicate" not in captured
+    assert "skipped_duplicate_count=2" in captured
     reset_logging_state()
 
 
