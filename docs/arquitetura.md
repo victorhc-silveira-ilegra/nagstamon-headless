@@ -40,7 +40,7 @@ Port           Port            Port        LedgerPort      Port
 | `entities/severity.py` | Severidade normalizada |
 | `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, Watchdog, silenced/inhibited) |
 | `services/alert_hold.py` | Classe de persistencia (rapido / transiente / CRITICAL / WARNING; INFO fora) |
-| `services/alert_view.py` | Cards stdout: Client, Host, Service, Status, Duration, Started, Status information |
+| `services/alert_view.py` | Cards stdout/Chat: colunas NBSP; `format_chat_text` (bloco monoespaçado) |
 
 O dominio **nao** loga e **nao** conhece httpx nem `.env`.
 
@@ -102,4 +102,4 @@ Filtros: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `
 
 Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
 
-Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um card por alerta claimed (`publish([alert])`); o mesmo texto vai ao webhook (um POST). Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.
+Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um card por alerta claimed (`publish([alert])`); o texto vai ao webhook em bloco monoespaçado (`format_chat_text`) para a tabulacao igual ao stdout. Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.

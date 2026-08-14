@@ -21,7 +21,7 @@
 - `make docker-smoke`: VPN/proxy + um ciclo real (`docker run` one-shot, `--max-cycles 1`) com os `*.conf` do host; nao disputa o container do `docker-up`.
 - Hold-down SRE: `FILTER_HOLD_FAST/CRITICAL` 180s, `FILTER_HOLD_WARNING` 600s; INFO e sem inicio conhecido nao disparam; tipo ganha de severidade.
 - Nao despacha alerta cujo inicio conhecido e anterior ao boot do daemon.
-- Card: labels em negrito (markdown do Chat) e colunas alinhadas com NBSP.
+- Card: labels `*Label:*` e colunas com NBSP; Google Chat em bloco monoespaçado para a tabulacao igual ao stdout.
 
 ## 1.0.0 (2026-08-13)
 

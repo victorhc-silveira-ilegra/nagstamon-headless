@@ -46,7 +46,7 @@ Ports sao `typing.Protocol` (sem ABC).
 - Watchdog / InfoInhibitor
 - states suppressed/pending/unprocessed e silenced/inhibited
 
-`AlertView` (`domain/services/alert_view.py`): snapshot operacional em cards (CRITICAL primeiro). Labels em `*negrito*` (markdown do Chat) e colunas com NBSP. Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`.
+`AlertView` (`domain/services/alert_view.py`): snapshot operacional em cards (CRITICAL primeiro). Labels `*Label:*` e colunas com NBSP (alinhadas a `Status information:`). Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`. Google Chat: `format_chat_text` envolve o card em bloco monoespaçado.
 
 ## Qualidade
 

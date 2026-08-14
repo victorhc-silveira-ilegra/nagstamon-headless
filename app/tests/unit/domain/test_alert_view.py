@@ -10,6 +10,7 @@ from domain.services.alert_view import (
     LABEL_WIDTH,
     MISSING,
     NBSP,
+    format_chat_text,
     format_duration,
     format_started,
     host_value,
@@ -22,7 +23,7 @@ FETCHED = datetime(2026, 8, 14, 17, 0, 0, tzinfo=UTC)
 
 def _row(label: str, value: str) -> str:
     visible = f"{label}:"
-    pad = max(LABEL_WIDTH - len(visible), 1)
+    pad = LABEL_WIDTH - len(visible) + 1
     return f"*{visible}*{NBSP * pad}{value}"
 
 
@@ -141,7 +142,12 @@ def test_render_card_fields_and_wrap() -> None:
     assert _row("Duration", "--") in text
     assert _row("Started", "--") in text
     assert _row("Status information", "inode usage high") in text
-    assert f"\n{NBSP * (LABEL_WIDTH + 2)}" in text
+    assert f"\n{NBSP * (LABEL_WIDTH + 3)}" in text
+    client = next(line for line in text.splitlines() if line.startswith("*Client:*"))
+    info = next(
+        line for line in text.splitlines() if line.startswith("*Status information:*")
+    )
+    assert client.index("core") == info.index("inode")
 
 
 def test_render_started_duration_and_sort() -> None:
@@ -190,10 +196,19 @@ def test_render_default_timezone_and_placeholders() -> None:
     assert _row("Service", "--") in text
 
 
-def test_render_escapes_chat_markup_in_values() -> None:
+def test_format_chat_text_wraps_monospace_and_sanitizes_fence() -> None:
+    card = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
+    wrapped = format_chat_text(card)
+    assert wrapped.startswith("```\n")
+    assert wrapped.endswith("\n```")
+    assert wrapped[4:-4] == card
+    assert format_chat_text("before ``` after") == "```\nbefore ''' after\n```"
+
+
+def test_render_keeps_markup_chars_in_values() -> None:
     text = render_effective_alerts(
         [_alert(status_text="disk *full* _now_")],
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert "disk \\*full\\* \\_now\\_" in text
+    assert "disk *full* _now_" in text
