@@ -11,7 +11,7 @@ from infrastructure.config.settings import Settings
 def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SERVERS_DIR", "/tmp/servers")
     monkeypatch.setenv("PROXY_ADDR", "http://proxy.example:3128")
-    monkeypatch.setenv("REFRESH_INTERVAL", "30")
+    monkeypatch.setenv("REFRESH_INTERVAL_SECONDS", "30")
     monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", "5")
     monkeypatch.setenv("HTTP_MAX_WORKERS", "8")
     monkeypatch.setenv("LOG_LEVEL", "INFO")
@@ -30,10 +30,10 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOG_DIR", "logs")
     monkeypatch.setenv("DEDUP_ENABLED", "false")
     monkeypatch.setenv("DEDUP_WINDOW_MINUTES", "45")
-    monkeypatch.setenv("FILTER_WINDOW_START", "14:00")
-    monkeypatch.setenv("FILTER_WINDOW_END", "17:30")
-    monkeypatch.setenv("FILTER_TIMEZONE", "UTC")
-    monkeypatch.setenv("FILTER_WEEKDAYS", "mon,wed,fri")
+    monkeypatch.setenv("WINDOW_START", "14:00")
+    monkeypatch.setenv("WINDOW_END", "17:30")
+    monkeypatch.setenv("WINDOW_TIMEZONE", "UTC")
+    monkeypatch.setenv("WINDOW_DAYS", "mon,wed,fri")
     monkeypatch.setenv("FILTER_HOLD_FAST_SECONDS", "90")
     monkeypatch.setenv("FILTER_HOLD_CRITICAL_SECONDS", "120")
     monkeypatch.setenv("FILTER_HOLD_WARNING_SECONDS", "300")
@@ -53,6 +53,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_dir == Path("logs")
     assert settings.dedup_enabled is False
     assert settings.dedup_window_minutes == 45
+    assert settings.filter_window_enabled is True
     assert settings.filter_window_start.hour == 14
     assert settings.filter_window_end.hour == 17
     assert settings.filter_window_end.minute == 30
@@ -70,7 +71,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SERVERS_DIR", raising=False)
     monkeypatch.delenv("PROXY_ADDR", raising=False)
-    monkeypatch.delenv("REFRESH_INTERVAL", raising=False)
+    monkeypatch.delenv("REFRESH_INTERVAL_SECONDS", raising=False)
     monkeypatch.delenv("HTTP_TIMEOUT_SECONDS", raising=False)
     monkeypatch.delenv("HTTP_MAX_WORKERS", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
@@ -79,10 +80,15 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
-    monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
-    monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
-    monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
-    monkeypatch.delenv("FILTER_WEEKDAYS", raising=False)
+    monkeypatch.delenv("WINDOW_ENABLED", raising=False)
+    monkeypatch.delenv("WINDOW_START", raising=False)
+    monkeypatch.delenv("WINDOW_END", raising=False)
+    monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
+    monkeypatch.delenv("WINDOW_DAYS", raising=False)
+    monkeypatch.delenv("WINDOW_START", raising=False)
+    monkeypatch.delenv("WINDOW_END", raising=False)
+    monkeypatch.delenv("WINDOW_DAYS", raising=False)
+    monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
     monkeypatch.delenv("FILTER_HOLD_FAST_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_CRITICAL_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_WARNING_SECONDS", raising=False)
@@ -102,6 +108,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_dir == Path("logs")
     assert settings.dedup_enabled is True
     assert settings.dedup_window_minutes == 30
+    assert settings.filter_window_enabled is True
     assert settings.filter_window_start.hour == 13
     assert settings.filter_window_start.minute == 30
     assert settings.filter_window_end.hour == 18
@@ -151,14 +158,14 @@ def test_settings_rejects_non_positive_timeout(monkeypatch: pytest.MonkeyPatch) 
 
 def test_settings_rejects_invalid_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("REFRESH_INTERVAL", "abc")
-    with pytest.raises(ValueError, match="REFRESH_INTERVAL"):
+    monkeypatch.setenv("REFRESH_INTERVAL_SECONDS", "abc")
+    with pytest.raises(ValueError, match="REFRESH_INTERVAL_SECONDS"):
         Settings.from_env()
 
 
 def test_settings_rejects_non_positive_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("REFRESH_INTERVAL", "0")
+    monkeypatch.setenv("REFRESH_INTERVAL_SECONDS", "0")
     with pytest.raises(ValueError, match="greater than zero"):
         Settings.from_env()
 
@@ -212,7 +219,7 @@ def test_settings_loads_dotenv_when_enabled(
 ) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text(
-        "SERVERS_DIR=/from-dotenv\nREFRESH_INTERVAL=7\n",
+        "SERVERS_DIR=/from-dotenv\nREFRESH_INTERVAL_SECONDS=7\n",
         encoding="utf-8",
     )
 
@@ -222,7 +229,7 @@ def test_settings_loads_dotenv_when_enabled(
 
     monkeypatch.delenv("NAGSTAMON_DISABLE_DOTENV", raising=False)
     monkeypatch.delenv("SERVERS_DIR", raising=False)
-    monkeypatch.delenv("REFRESH_INTERVAL", raising=False)
+    monkeypatch.delenv("REFRESH_INTERVAL_SECONDS", raising=False)
     monkeypatch.delenv("PROXY_ADDR", raising=False)
     monkeypatch.delenv("HTTP_TIMEOUT_SECONDS", raising=False)
     monkeypatch.delenv("HTTP_MAX_WORKERS", raising=False)
@@ -232,10 +239,15 @@ def test_settings_loads_dotenv_when_enabled(
     monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
-    monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
-    monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
-    monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
-    monkeypatch.delenv("FILTER_WEEKDAYS", raising=False)
+    monkeypatch.delenv("WINDOW_ENABLED", raising=False)
+    monkeypatch.delenv("WINDOW_START", raising=False)
+    monkeypatch.delenv("WINDOW_END", raising=False)
+    monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
+    monkeypatch.delenv("WINDOW_DAYS", raising=False)
+    monkeypatch.delenv("WINDOW_START", raising=False)
+    monkeypatch.delenv("WINDOW_END", raising=False)
+    monkeypatch.delenv("WINDOW_DAYS", raising=False)
+    monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
     monkeypatch.delenv("FILTER_HOLD_FAST_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_CRITICAL_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_WARNING_SECONDS", raising=False)
@@ -257,8 +269,8 @@ def test_settings_rejects_invalid_filter_window(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WINDOW_START", "25:00")
-    with pytest.raises(ValueError, match="FILTER_WINDOW_START"):
+    monkeypatch.setenv("WINDOW_START", "25:00")
+    with pytest.raises(ValueError, match="WINDOW_START"):
         Settings.from_env()
 
 
@@ -266,8 +278,8 @@ def test_settings_rejects_malformed_filter_window(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WINDOW_END", "noon")
-    with pytest.raises(ValueError, match="FILTER_WINDOW_END"):
+    monkeypatch.setenv("WINDOW_END", "noon")
+    with pytest.raises(ValueError, match="WINDOW_END"):
         Settings.from_env()
 
 
@@ -275,10 +287,10 @@ def test_settings_blank_filter_window_and_timezone(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WINDOW_START", "  ")
-    monkeypatch.setenv("FILTER_WINDOW_END", "  ")
-    monkeypatch.setenv("FILTER_TIMEZONE", "  ")
-    monkeypatch.setenv("FILTER_WEEKDAYS", "  ")
+    monkeypatch.setenv("WINDOW_START", "  ")
+    monkeypatch.setenv("WINDOW_END", "  ")
+    monkeypatch.setenv("WINDOW_TIMEZONE", "  ")
+    monkeypatch.setenv("WINDOW_DAYS", "  ")
     settings = Settings.from_env()
     assert settings.filter_window_start.hour == 13
     assert settings.filter_window_end.hour == 18
@@ -288,40 +300,40 @@ def test_settings_blank_filter_window_and_timezone(
 
 def test_settings_parses_portuguese_weekdays(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WEEKDAYS", "seg, ter, qua, qui, sex")
+    monkeypatch.setenv("WINDOW_DAYS", "seg, ter, qua, qui, sex")
     settings = Settings.from_env()
     assert settings.filter_weekdays == (0, 1, 2, 3, 4)
-    monkeypatch.setenv("FILTER_WEEKDAYS", "seg,seg,mon")
+    monkeypatch.setenv("WINDOW_DAYS", "seg,seg,mon")
     assert Settings.from_env().filter_weekdays == (0,)
-    monkeypatch.setenv("FILTER_WEEKDAYS", " , , ")
+    monkeypatch.setenv("WINDOW_DAYS", " , , ")
     assert Settings.from_env().filter_weekdays == (0, 1, 2, 3, 4)
 
 
 def test_settings_rejects_invalid_weekdays(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WEEKDAYS", "mon,holiday")
-    with pytest.raises(ValueError, match="FILTER_WEEKDAYS"):
+    monkeypatch.setenv("WINDOW_DAYS", "mon,holiday")
+    with pytest.raises(ValueError, match="WINDOW_DAYS"):
         Settings.from_env()
 
 
 def test_settings_rejects_invalid_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_TIMEZONE", "Not/AZone")
-    with pytest.raises(ValueError, match="FILTER_TIMEZONE"):
+    monkeypatch.setenv("WINDOW_TIMEZONE", "Not/AZone")
+    with pytest.raises(ValueError, match="WINDOW_TIMEZONE"):
         Settings.from_env()
 
 
 def test_settings_rejects_non_numeric_hhmm(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WINDOW_START", "aa:00")
-    with pytest.raises(ValueError, match="FILTER_WINDOW_START"):
+    monkeypatch.setenv("WINDOW_START", "aa:00")
+    with pytest.raises(ValueError, match="WINDOW_START"):
         Settings.from_env()
 
 
 def test_settings_rejects_invalid_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
     _base_env(monkeypatch)
-    monkeypatch.setenv("FILTER_WINDOW_END", "12:60")
-    with pytest.raises(ValueError, match="FILTER_WINDOW_END"):
+    monkeypatch.setenv("WINDOW_END", "12:60")
+    with pytest.raises(ValueError, match="WINDOW_END"):
         Settings.from_env()
 
 
@@ -348,3 +360,41 @@ def test_settings_rejects_hold_not_less_than_max(
     monkeypatch.setenv("FILTER_DURATION_MAX_SECONDS", "600")
     with pytest.raises(ValueError, match="FILTER_HOLD_WARNING_SECONDS"):
         Settings.from_env()
+
+
+def test_settings_canonical_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("REFRESH_INTERVAL_SECONDS", "45")
+    monkeypatch.setenv("WINDOW_START", "10:00")
+    monkeypatch.setenv("WINDOW_END", "16:30")
+    monkeypatch.setenv("WINDOW_DAYS", "tue,thu")
+    monkeypatch.setenv("WINDOW_TIMEZONE", "UTC")
+    monkeypatch.setenv("WINDOW_ENABLED", "false")
+    monkeypatch.setenv("GCHAT_WEBHOOK_URL", "https://chat.example/canonical")
+    settings = Settings.from_env()
+    assert settings.refresh_interval == 45
+    assert settings.filter_window_enabled is False
+    assert settings.filter_window_start.hour == 10
+    assert settings.filter_window_end.hour == 16
+    assert settings.filter_window_end.minute == 30
+    assert settings.filter_weekdays == (1, 3)
+    assert settings.filter_timezone == "UTC"
+    assert settings.gchat_webhook_url == "https://chat.example/canonical"
+
+
+def test_settings_ignores_legacy_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.delenv("REFRESH_INTERVAL_SECONDS", raising=False)
+    monkeypatch.delenv("WINDOW_ENABLED", raising=False)
+    monkeypatch.delenv("WINDOW_START", raising=False)
+    monkeypatch.delenv("GCHAT_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("REFRESH_INTERVAL", "90")
+    monkeypatch.setenv("FILTER_WINDOW_START", "08:00")
+    monkeypatch.setenv("FILTER_ENABLED", "false")
+    monkeypatch.setenv("WEBHOOK_URL", "https://chat.example/old")
+    settings = Settings.from_env()
+    assert settings.refresh_interval == 30
+    assert settings.filter_window_enabled is True
+    assert settings.filter_window_start.hour == 13
+    assert settings.filter_window_start.minute == 30
+    assert settings.gchat_webhook_url == ""

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Janela comercial respeita `WINDOW_ENABLED` (default `true`; `false` ignora horario e dias uteis).
+
 ## [1.5.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.4.0...v1.5.0) (2026-08-17)
 
 ## [1.4.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.3.1...v1.4.0) (2026-08-14)
@@ -29,6 +33,7 @@
 - Nao despacha alerta cujo inicio conhecido e anterior ao boot do daemon.
 - Snapshot: labels em negrito (markdown do Chat) e colunas alinhadas com NBSP; webhook como mensagem de texto (sem fence monoespaçado / card estruturado).
 - Log diario em `logs/nagstamon-YYYY-MM-DD.log` (`LOG_DIR`; tee de stdout/stderr com flush); Docker monta `logs/` no host; `make app-clean` remove logs que nao sejam do dia atual.
+- Nomes de config alinhados ao padrao corporativo: `GCHAT_WEBHOOK_URL`, `WINDOW_*` (incluindo `WINDOW_ENABLED`), `REFRESH_INTERVAL_SECONDS` (sem aliases legados).
 
 ## 1.0.0 (2026-08-13)
 

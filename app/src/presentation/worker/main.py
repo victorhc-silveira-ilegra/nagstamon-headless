@@ -100,6 +100,7 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
             hold_warning_seconds=settings.filter_hold_warning_seconds,
             max_duration_seconds=settings.filter_duration_max_seconds,
             not_before=clock.now(),
+            window_enabled=settings.filter_window_enabled,
         ),
         dispatch_ledger=_dispatch_ledger(settings),
         alert_sound=sound,

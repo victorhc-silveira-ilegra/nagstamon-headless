@@ -269,6 +269,21 @@ def test_filter_weekdays_skip_weekend_and_honor_custom() -> None:
     assert not friday_only.is_filtered(friday, friday_now)
 
 
+def test_filter_window_disabled_skips_hours() -> None:
+    policy = AlertFilterPolicy(window_enabled=False)
+    saturday = datetime(2026, 8, 15, 17, 0, 0, tzinfo=UTC)
+    weekend = _alert(starts_at=saturday - timedelta(minutes=30))
+    early = datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC)
+    before_window = _alert(starts_at=early - timedelta(minutes=30))
+    still_ack = _alert(acknowledged=True, starts_at=saturday - timedelta(minutes=30))
+    too_new = _alert(starts_at=saturday - timedelta(minutes=5))
+    assert not policy.is_filtered(weekend, saturday)
+    assert not policy.is_filtered(before_window, early)
+    assert policy.is_filtered(still_ack, saturday)
+    assert policy.is_filtered(too_new, saturday)
+    assert AlertFilterPolicy().is_filtered(before_window, early)
+
+
 def test_filter_custom_duration_bounds() -> None:
     policy = AlertFilterPolicy(
         hold_fast_seconds=60,

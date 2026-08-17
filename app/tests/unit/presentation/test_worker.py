@@ -67,6 +67,7 @@ def _settings(tmp_path: Path, *, log_dir: Path | None = None) -> Settings:
         log_dir=log_dir,
         dedup_enabled=True,
         dedup_window_minutes=30,
+        filter_window_enabled=True,
         filter_window_start=time(13, 30),
         filter_window_end=time(18, 0),
         filter_timezone="America/Sao_Paulo",
@@ -91,6 +92,7 @@ def test_build_use_case_empty_dir(tmp_path: Path) -> None:
     assert use_case._filter_policy._hold_critical_seconds == 900
     assert use_case._filter_policy._hold_warning_seconds == 1200
     assert use_case._filter_policy._weekdays == frozenset({0, 1, 2, 3, 4})
+    assert use_case._filter_policy._window_enabled is True
 
 
 def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
@@ -107,6 +109,7 @@ def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
         log_dir=settings.log_dir,
         dedup_enabled=False,
         dedup_window_minutes=settings.dedup_window_minutes,
+        filter_window_enabled=settings.filter_window_enabled,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
@@ -139,6 +142,7 @@ def test_build_use_case_sound_enabled(tmp_path: Path) -> None:
         log_dir=settings.log_dir,
         dedup_enabled=settings.dedup_enabled,
         dedup_window_minutes=settings.dedup_window_minutes,
+        filter_window_enabled=settings.filter_window_enabled,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
@@ -170,6 +174,7 @@ def test_build_use_case_gchat_enabled(tmp_path: Path) -> None:
         log_dir=settings.log_dir,
         dedup_enabled=settings.dedup_enabled,
         dedup_window_minutes=settings.dedup_window_minutes,
+        filter_window_enabled=settings.filter_window_enabled,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
@@ -202,6 +207,7 @@ def test_build_use_case_file_ledger(tmp_path: Path) -> None:
         log_dir=settings.log_dir,
         dedup_enabled=True,
         dedup_window_minutes=settings.dedup_window_minutes,
+        filter_window_enabled=settings.filter_window_enabled,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
@@ -351,7 +357,7 @@ def test_run_settings_error(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     reset_logging_state()
-    monkeypatch.setenv("REFRESH_INTERVAL", "0")
+    monkeypatch.setenv("REFRESH_INTERVAL_SECONDS", "0")
     monkeypatch.delenv("LOG_FORMAT", raising=False)
     assert run(["--max-cycles", "1"]) == 1
     assert WORKER_BOOT_FAILED in _captured(capsys)

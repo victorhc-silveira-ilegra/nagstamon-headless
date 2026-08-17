@@ -60,11 +60,13 @@ class AlertFilterPolicy:
         hold_warning_seconds: int = HOLD_WARNING_SECONDS,
         max_duration_seconds: int = MAX_DURATION_SECONDS,
         not_before: datetime | None = None,
+        window_enabled: bool = True,
     ) -> None:
         self._window_start = window_start
         self._window_end = window_end
         self._weekdays = frozenset(weekdays)
         self._timezone = timezone or DEFAULT_FILTER_TIMEZONE
+        self._window_enabled = window_enabled
         self._hold_fast_seconds = hold_fast_seconds
         self._hold_critical_seconds = hold_critical_seconds
         self._hold_warning_seconds = hold_warning_seconds
@@ -123,6 +125,8 @@ class AlertFilterPolicy:
             return True
         if duration_seconds >= self._max_duration_seconds:
             return True
+        if not self._window_enabled:
+            return False
         if not self._starts_at_in_window_today(start, now):
             return True
         return not self._in_daily_window(now)

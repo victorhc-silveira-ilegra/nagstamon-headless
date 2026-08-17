@@ -259,7 +259,7 @@ def clean_workspace_artifacts(
     logs_dir = repo_root / "logs"
     if logs_dir.exists():
         today = datetime.now(
-            resolve_log_timezone(os.environ.get("FILTER_TIMEZONE"))
+            resolve_log_timezone(os.environ.get("WINDOW_TIMEZONE"))
         ).date()
         for child in stale_daily_log_paths(logs_dir, today):
             safe_remove(child)

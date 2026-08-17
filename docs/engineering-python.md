@@ -19,7 +19,7 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 5. Emite `poll.cycle.started` no primeiro ciclo
 6. `PollMonitorsUseCase.execute()`: config → fetch → filtro → claim/publish/confirm por alerta (stdout + Google Chat) → som (se claimed)
 7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`) e `poll.cycle.finished` (primeiro ciclo, ou se houver claimed; com `duration_ms` e `skipped_duplicate_count`) ou `poll.cycle.failed`
-8. Sleep `REFRESH_INTERVAL` e repete
+8. Sleep `REFRESH_INTERVAL_SECONDS` e repete
 
 ## Ports e adapters
 
@@ -48,7 +48,7 @@ Ports sao `typing.Protocol` (sem ABC).
 
 - `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
 - duracao so em Python: hold-down acima ate &lt; `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `duration_str`; INFO e sem inicio conhecido nao disparam
-- janela diaria `[FILTER_WINDOW_START, FILTER_WINDOW_END]` em `FILTER_TIMEZONE` e em `FILTER_WEEKDAYS` (default seg–sex): `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje
+- janela diaria `[WINDOW_START, WINDOW_END]` em `WINDOW_TIMEZONE` e em `WINDOW_DAYS` (default seg–sex), quando `WINDOW_ENABLED=true`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje
 - inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
@@ -96,7 +96,7 @@ Fakes/Mocks: fakes dos ports, `httpx.BaseTransport`, sleeper injetavel no worker
 - Compose: `docker compose --env-file .env ...`
 - Python: `load_project_dotenv(override=True)` em `Settings.from_env()`
 - Nunca commitar proxy interno real nem senhas dos `.conf`
-- `FILTER_WINDOW_START` / `FILTER_WINDOW_END` (`HH:MM`), `FILTER_WEEKDAYS` (`mon,tue,wed,thu,fri`), `FILTER_TIMEZONE` (IANA), `FILTER_HOLD_FAST_SECONDS` (600), `FILTER_HOLD_CRITICAL_SECONDS` (900), `FILTER_HOLD_WARNING_SECONDS` (1200), `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria)
+- `WINDOW_ENABLED` (default true), `WINDOW_START` / `WINDOW_END` (`HH:MM`), `WINDOW_DAYS` (`mon,tue,wed,thu,fri`), `WINDOW_TIMEZONE` (IANA), `FILTER_HOLD_FAST_SECONDS` (600), `FILTER_HOLD_CRITICAL_SECONDS` (900), `FILTER_HOLD_WARNING_SECONDS` (1200), `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria).
 
 ## Entrypoints
 

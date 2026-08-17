@@ -33,7 +33,7 @@ Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert
 - Fluxo com ledger: `try_claim` → `publish` → `confirm`; fingerprint inclui `host` (`DEDUP_LEDGER_PATH` = arquivo com flock; vazio = memoria).
 - Inicio conhecido (`starts_at` ou duracao) anterior ao boot do daemon nao entra no snapshot.
 - Hold-down silencioso antes do snapshot: muito critico 10 min (`FILTER_HOLD_FAST_SECONDS`), mediano 15 min (`FILTER_HOLD_CRITICAL_SECONDS`), baixo 20 min (`FILTER_HOLD_WARNING_SECONDS`); tipo ganha de severidade; INFO nao dispara.
-- Fuso = `FILTER_TIMEZONE`; janela comercial = `FILTER_WINDOW_*` e `FILTER_WEEKDAYS` (worker injeta).
+- Fuso = `WINDOW_TIMEZONE`; janela comercial = `WINDOW_ENABLED` / `WINDOW_START` / `WINDOW_END` / `WINDOW_DAYS` (worker injeta).
 - Ordenar CRITICAL, WARNING, demais; depois Client, Host, Service.
 - AM: Host de `hostname|host|pod|instance|application|namespace`; Info de `description|summary|message|title`.
 - CGI: tabelas aninhadas do status.cgi; Host/Service dos href `host=`/`service=`; Duration `0d 2h 15m` (espacos normalizados); Started derivado da duracao se nao houver `starts_at`; ack via `statusCRITICALACK` ou texto acknowledged.

@@ -48,7 +48,7 @@ Fail-open de fetch/config/som: WARNING e o ciclo segue. Falha de Chat: WARNING, 
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` ou `CRITICAL` |
 | `LOG_FORMAT` | `text` | `text` (key=value) ou `json` |
 | `LOG_FILE` | vazio | Se definido, tambem grava eventos semanticos nesse arquivo (flush a cada emit) |
-| `LOG_DIR` | `logs` | Tee de stdout/stderr em `LOG_DIR/nagstamon-YYYY-MM-DD.log` (fuso `FILTER_TIMEZONE`); vazio desliga. No Docker o compose monta `logs/` do host em `/var/log/nagstamon-headless`. `make app-clean` remove arquivos em `logs/` que nao sejam o do dia atual nem `.gitkeep` |
+| `LOG_DIR` | `logs` | Tee de stdout/stderr em `LOG_DIR/nagstamon-YYYY-MM-DD.log` (fuso `WINDOW_TIMEZONE`); vazio desliga. No Docker o compose monta `logs/` do host em `/var/log/nagstamon-headless`. `make app-clean` remove arquivos em `logs/` que nao sejam o do dia atual nem `.gitkeep` |
 
 Setup: `presentation.logging.setup_logging(...)`.
 

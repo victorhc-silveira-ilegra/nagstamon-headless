@@ -81,7 +81,7 @@ def _parse_timezone(raw: str) -> str:
     try:
         ZoneInfo(name)
     except (ZoneInfoNotFoundError, KeyError, ValueError) as exc:
-        raise ValueError("FILTER_TIMEZONE must be a valid IANA timezone") from exc
+        raise ValueError("WINDOW_TIMEZONE must be a valid IANA timezone") from exc
     return name
 
 
@@ -97,7 +97,7 @@ def _parse_weekdays(raw: str) -> tuple[int, ...]:
             continue
         if key not in _WEEKDAY_ALIASES:
             raise ValueError(
-                "FILTER_WEEKDAYS must be weekdays (mon..sun, seg..dom or 0..6)"
+                "WINDOW_DAYS must be weekdays (mon..sun, seg..dom or 0..6)"
             )
         day = _WEEKDAY_ALIASES[key]
         if day not in seen:
@@ -131,6 +131,7 @@ class Settings:
     log_dir: Path | None
     dedup_enabled: bool
     dedup_window_minutes: int
+    filter_window_enabled: bool
     filter_window_start: time
     filter_window_end: time
     filter_timezone: str
@@ -152,8 +153,8 @@ class Settings:
         ).expanduser()
         proxy_addr = os.environ.get("PROXY_ADDR", "").strip()
         refresh_interval = _parse_positive_int(
-            os.environ.get("REFRESH_INTERVAL", "30"),
-            "REFRESH_INTERVAL",
+            os.environ.get("REFRESH_INTERVAL_SECONDS", "30"),
+            "REFRESH_INTERVAL_SECONDS",
         )
         timeout = _parse_positive_float(
             os.environ.get("HTTP_TIMEOUT_SECONDS", "5"),
@@ -179,16 +180,17 @@ class Settings:
             os.environ.get("DEDUP_WINDOW_MINUTES", "30"),
             "DEDUP_WINDOW_MINUTES",
         )
+        filter_window_enabled = _parse_bool(os.environ.get("WINDOW_ENABLED", "true"))
         filter_window_start = _parse_hhmm(
-            os.environ.get("FILTER_WINDOW_START", "13:30").strip() or "13:30",
-            "FILTER_WINDOW_START",
+            os.environ.get("WINDOW_START", "13:30").strip() or "13:30",
+            "WINDOW_START",
         )
         filter_window_end = _parse_hhmm(
-            os.environ.get("FILTER_WINDOW_END", "18:00").strip() or "18:00",
-            "FILTER_WINDOW_END",
+            os.environ.get("WINDOW_END", "18:00").strip() or "18:00",
+            "WINDOW_END",
         )
-        filter_timezone = _parse_timezone(os.environ.get("FILTER_TIMEZONE", ""))
-        filter_weekdays = _parse_weekdays(os.environ.get("FILTER_WEEKDAYS", ""))
+        filter_timezone = _parse_timezone(os.environ.get("WINDOW_TIMEZONE", ""))
+        filter_weekdays = _parse_weekdays(os.environ.get("WINDOW_DAYS", ""))
         filter_hold_fast_seconds = _parse_positive_int(
             os.environ.get("FILTER_HOLD_FAST_SECONDS", "600").strip() or "600",
             "FILTER_HOLD_FAST_SECONDS",
@@ -230,6 +232,7 @@ class Settings:
             log_dir=log_dir,
             dedup_enabled=dedup_enabled,
             dedup_window_minutes=dedup_window_minutes,
+            filter_window_enabled=filter_window_enabled,
             filter_window_start=filter_window_start,
             filter_window_end=filter_window_end,
             filter_timezone=filter_timezone,
