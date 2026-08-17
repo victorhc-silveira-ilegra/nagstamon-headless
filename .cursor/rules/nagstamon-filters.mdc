@@ -17,11 +17,11 @@ Itens marcados na aba Filters do Nagstamon = excluir do snapshot efetivo.
 | Baixo | WARNING restante e CPU/mem/load/fila/lock/ping/latencia/flap | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
 
 - Tipo ganha de severidade (ex.: CPU CRITICAL espera 20 min; DiskFull WARNING dispara aos 10 min). Keywords em alertname/desc/status, nao no host.
-- Janela: `now` em `[FILTER_WINDOW_START, FILTER_WINDOW_END]` (`13:30`–`18:00`) `FILTER_TIMEZONE` **e**, se o inicio for conhecido, esse instante no mesmo intervalo **hoje**.
+- Janela: `now` em `[FILTER_WINDOW_START, FILTER_WINDOW_END]` (`13:30`–`18:00`) `FILTER_TIMEZONE` **e** em `FILTER_WEEKDAYS` (default `mon,tue,wed,thu,fri`); se o inicio for conhecido, esse instante no mesmo intervalo **hoje**.
 - Boot: inicio conhecido anterior ao start do daemon (`not_before`) exclui.
 - Ja existentes: texto de erro HTTP, Watchdog/InfoInhibitor, states suppressed/pending/unprocessed, inhibited.
 
-Construtor de `AlertFilterPolicy` recebe janela, fuso, holds (`FILTER_HOLD_*`), teto de duracao e `not_before` (boot do worker). Dominio e use case **nao** logam.
+Construtor de `AlertFilterPolicy` recebe janela, dias uteis (`FILTER_WEEKDAYS`), fuso, holds (`FILTER_HOLD_*`), teto de duracao e `not_before` (boot do worker). Dominio e use case **nao** logam.
 
 Som: port `play_new_alert()` so apos `confirm` de pelo menos um alerta (dedup off: lista efetiva nao vazia apos publish). Adapter fail-open (`poll.sound.failed` WARNING). `SOUND_ENABLED=true` no `.env`; compose pode forcar `false`.
 

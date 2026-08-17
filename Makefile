@@ -35,7 +35,7 @@ help:
 	@echo -e "  $(GREEN)app-test$(RESET)           - Testes + cobertura 100%"
 	@echo -e "  $(GREEN)app-lint$(RESET)           - Lint / format / mypy / vulture"
 	@echo -e "  $(GREEN)app-security$(RESET)       - Bandit + pip-audit"
-	@echo -e "  $(GREEN)app-clean$(RESET)          - Limpa caches/logs locais"
+	@echo -e "  $(GREEN)app-clean$(RESET)          - Limpa caches e logs que nao sao do dia atual"
 	@echo -e "  $(GREEN)app-install$(RESET)        - Pip no .venv"
 	@echo -e "  $(GREEN)app-setup$(RESET)          - Bootstrap .venv + deps (+ hooks se houver git)"
 	@echo -e "  $(GREEN)app-pre-commit$(RESET)     - Instala hooks no Git"

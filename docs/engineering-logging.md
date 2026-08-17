@@ -7,7 +7,7 @@ Orquestrar o daemon com poucos eventos nomeados, sem dump de payload JSON/HTML n
 API: `log_event(logger, level, event, **fields)` em `infrastructure/logging/emit.py`.
 Constantes em `infrastructure/logging/events.py`.
 
-A lista de alertas efetivos no stdout e o **sink do produto** (snapshot texto), nao um evento de log. O handler de log tambem escreve em stdout para o `docker logs` nao entremear stderr no meio do snapshot. Dominio e use case **nao** logam.
+A lista de alertas efetivos no stdout e o **sink do produto** (snapshot texto), nao um evento de log. O handler de log tambem escreve em stdout para o `docker logs` nao entremear stderr no meio do snapshot. O worker faz tee de stdout/stderr para o arquivo diario em `LOG_DIR` (flush a cada escrita), inclusive o snapshot. Dominio e use case **nao** logam.
 
 ## Niveis
 
@@ -47,7 +47,8 @@ Fail-open de fetch/config/som: WARNING e o ciclo segue. Falha de Chat: WARNING, 
 |-----|---------|-----------|
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` ou `CRITICAL` |
 | `LOG_FORMAT` | `text` | `text` (key=value) ou `json` |
-| `LOG_FILE` | vazio | Se definido, tambem grava em arquivo |
+| `LOG_FILE` | vazio | Se definido, tambem grava eventos semanticos nesse arquivo (flush a cada emit) |
+| `LOG_DIR` | `logs` | Tee de stdout/stderr em `LOG_DIR/nagstamon-YYYY-MM-DD.log` (fuso `FILTER_TIMEZONE`); vazio desliga. No Docker o compose monta `logs/` do host em `/var/log/nagstamon-headless`. `make app-clean` remove arquivos em `logs/` que nao sejam o do dia atual nem `.gitkeep` |
 
 Setup: `presentation.logging.setup_logging(...)`.
 

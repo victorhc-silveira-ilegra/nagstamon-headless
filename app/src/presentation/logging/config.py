@@ -9,6 +9,12 @@ from presentation.logging.formatters import JsonSemanticFormatter, TextSemanticF
 _CONFIGURED = False
 
 
+class ImmediateFileHandler(logging.FileHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        super().emit(record)
+        self.flush()
+
+
 def setup_logging(
     *,
     level: str = "INFO",
@@ -32,7 +38,7 @@ def setup_logging(
     if log_file:
         path = Path(log_file)
         path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(path, encoding="utf-8")
+        file_handler = ImmediateFileHandler(path, encoding="utf-8")
         file_handler.setFormatter(formatter)
         handlers.append(file_handler)
 

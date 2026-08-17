@@ -105,7 +105,7 @@ docker rm -f "${SMOKE_NAME}" >/dev/null 2>&1 || true
 
 echo "SMOKE: 1 ciclo em ${IMAGE} (nao usa o container nagstamon-headless)"
 
-mkdir -p "${ROOT}/data"
+mkdir -p "${ROOT}/data" "${ROOT}/logs"
 
 set +e
 timeout --kill-after=15 300 docker run --rm --init \
@@ -116,7 +116,9 @@ timeout --kill-after=15 300 docker run --rm --init \
   -e SOUND_ENABLED=false \
   -v "${HOST_SERVERS_DIR}:/etc/nagstamon/servers:ro" \
   -v "${ROOT}/data:/var/lib/nagstamon-headless" \
+  -v "${ROOT}/logs:/var/log/nagstamon-headless" \
   -e DEDUP_LEDGER_PATH=/var/lib/nagstamon-headless/dispatch-ledger.json \
+  -e LOG_DIR=/var/log/nagstamon-headless \
   "${IMAGE}" nagstamon-headless --max-cycles 1 2>&1 | tee "${LOG}"
 STATUS="${PIPESTATUS[0]}"
 set -e

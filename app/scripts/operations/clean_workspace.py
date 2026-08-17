@@ -10,6 +10,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parents[2]
@@ -250,14 +251,17 @@ def clean_python_artifacts(scan_root: Path, safe_remove: RemoveFn) -> None:
 def clean_workspace_artifacts(
     app_root: Path, repo_root: Path, safe_remove: RemoveFn
 ) -> None:
+    from presentation.logging.daily import resolve_log_timezone, stale_daily_log_paths
+
     for scan_root in (app_root, repo_root):
         clean_named_caches(scan_root, safe_remove)
         clean_python_artifacts(scan_root, safe_remove)
     logs_dir = repo_root / "logs"
     if logs_dir.exists():
-        for child in list(logs_dir.iterdir()):
-            if child.name == ".gitkeep":
-                continue
+        today = datetime.now(
+            resolve_log_timezone(os.environ.get("FILTER_TIMEZONE"))
+        ).date()
+        for child in stale_daily_log_paths(logs_dir, today):
             safe_remove(child)
     for pattern in (
         repo_root.glob("pytest-cache-files-*"),

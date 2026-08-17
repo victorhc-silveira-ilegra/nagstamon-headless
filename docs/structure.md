@@ -19,7 +19,7 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   │   └── presentation/
 │   │       ├── worker/main.py
 │   │       ├── worker/cycle_guard.py
-│   │       └── logging/
+│   │       └── logging/ (config.py, daily.py, formatters)
 │   ├── tests/
 │   │   ├── unit/
 │   │   └── integration/
@@ -29,6 +29,7 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   ├── pyproject.toml
 │   ├── requirements.txt
 │   └── requirements-dev.txt
+├── logs/ (.gitkeep; `nagstamon-YYYY-MM-DD.log` no host, ignorado pelo git)
 ├── docs/
 ├── infra/docker/
 │   ├── Dockerfile

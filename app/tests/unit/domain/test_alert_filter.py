@@ -256,6 +256,19 @@ def test_filter_custom_window_and_timezone() -> None:
     assert policy.is_filtered(keep, outside)
 
 
+def test_filter_weekdays_skip_weekend_and_honor_custom() -> None:
+    policy = AlertFilterPolicy()
+    saturday = datetime(2026, 8, 15, 17, 0, 0, tzinfo=UTC)
+    weekend = _alert(starts_at=saturday - timedelta(minutes=30))
+    assert policy.is_filtered(weekend, saturday)
+    friday_only = AlertFilterPolicy(weekdays=(4,))
+    thursday = _alert(starts_at=NOW - timedelta(minutes=30))
+    friday_now = datetime(2026, 8, 14, 17, 0, 0, tzinfo=UTC)
+    friday = _alert(starts_at=friday_now - timedelta(minutes=30))
+    assert friday_only.is_filtered(thursday, NOW)
+    assert not friday_only.is_filtered(friday, friday_now)
+
+
 def test_filter_custom_duration_bounds() -> None:
     policy = AlertFilterPolicy(
         hold_fast_seconds=60,

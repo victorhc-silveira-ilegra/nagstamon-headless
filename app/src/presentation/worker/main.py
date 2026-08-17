@@ -33,7 +33,7 @@ from infrastructure.logging import (
     WORKER_STARTED,
     log_event,
 )
-from presentation.logging import setup_logging
+from presentation.logging import attach_daily_stdio, resolve_log_timezone, setup_logging
 from presentation.worker.cycle_guard import CycleGuard
 
 logger = logging.getLogger(__name__)
@@ -93,6 +93,7 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
         filter_policy=AlertFilterPolicy(
             window_start=settings.filter_window_start,
             window_end=settings.filter_window_end,
+            weekdays=settings.filter_weekdays,
             timezone=ZoneInfo(settings.filter_timezone),
             hold_fast_seconds=settings.filter_hold_fast_seconds,
             hold_critical_seconds=settings.filter_hold_critical_seconds,
@@ -160,6 +161,11 @@ def run(
     args = parser.parse_args(argv)
     try:
         resolved = settings or Settings.from_env()
+        if resolved.log_dir is not None:
+            attach_daily_stdio(
+                resolved.log_dir,
+                resolve_log_timezone(resolved.filter_timezone),
+            )
         setup_logging(
             level=resolved.log_level,
             log_format=resolved.log_format,

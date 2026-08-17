@@ -8,6 +8,45 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from infrastructure.config.dotenv_loader import load_project_dotenv
 
+DEFAULT_FILTER_WEEKDAYS = (0, 1, 2, 3, 4)
+_WEEKDAY_ALIASES = {
+    "0": 0,
+    "mon": 0,
+    "monday": 0,
+    "seg": 0,
+    "segunda": 0,
+    "1": 1,
+    "tue": 1,
+    "tuesday": 1,
+    "ter": 1,
+    "terca": 1,
+    "2": 2,
+    "wed": 2,
+    "wednesday": 2,
+    "qua": 2,
+    "quarta": 2,
+    "3": 3,
+    "thu": 3,
+    "thursday": 3,
+    "qui": 3,
+    "quinta": 3,
+    "4": 4,
+    "fri": 4,
+    "friday": 4,
+    "sex": 4,
+    "sexta": 4,
+    "5": 5,
+    "sat": 5,
+    "saturday": 5,
+    "sab": 5,
+    "sabado": 5,
+    "6": 6,
+    "sun": 6,
+    "sunday": 6,
+    "dom": 6,
+    "domingo": 6,
+}
+
 
 def _parse_bool(raw: str) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
@@ -46,6 +85,29 @@ def _parse_timezone(raw: str) -> str:
     return name
 
 
+def _parse_weekdays(raw: str) -> tuple[int, ...]:
+    text = raw.strip()
+    if not text:
+        return DEFAULT_FILTER_WEEKDAYS
+    seen: set[int] = set()
+    days: list[int] = []
+    for token in text.replace(";", ",").split(","):
+        key = token.strip().lower()
+        if not key:
+            continue
+        if key not in _WEEKDAY_ALIASES:
+            raise ValueError(
+                "FILTER_WEEKDAYS must be weekdays (mon..sun, seg..dom or 0..6)"
+            )
+        day = _WEEKDAY_ALIASES[key]
+        if day not in seen:
+            seen.add(day)
+            days.append(day)
+    if not days:
+        return DEFAULT_FILTER_WEEKDAYS
+    return tuple(sorted(days))
+
+
 def _parse_positive_float(raw: str, name: str) -> float:
     try:
         value = float(raw.strip())
@@ -66,11 +128,13 @@ class Settings:
     log_level: str
     log_format: str
     log_file: str | None
+    log_dir: Path | None
     dedup_enabled: bool
     dedup_window_minutes: int
     filter_window_start: time
     filter_window_end: time
     filter_timezone: str
+    filter_weekdays: tuple[int, ...]
     filter_hold_fast_seconds: int
     filter_hold_critical_seconds: int
     filter_hold_warning_seconds: int
@@ -108,6 +172,8 @@ class Settings:
         if log_format not in {"text", "json"}:
             raise ValueError("LOG_FORMAT must be 'text' or 'json'")
         log_file_raw = os.environ.get("LOG_FILE", "").strip()
+        log_dir_raw = os.environ.get("LOG_DIR", "logs").strip()
+        log_dir = Path(log_dir_raw).expanduser() if log_dir_raw else None
         dedup_enabled = _parse_bool(os.environ.get("DEDUP_ENABLED", "true"))
         dedup_window_minutes = _parse_positive_int(
             os.environ.get("DEDUP_WINDOW_MINUTES", "30"),
@@ -122,6 +188,7 @@ class Settings:
             "FILTER_WINDOW_END",
         )
         filter_timezone = _parse_timezone(os.environ.get("FILTER_TIMEZONE", ""))
+        filter_weekdays = _parse_weekdays(os.environ.get("FILTER_WEEKDAYS", ""))
         filter_hold_fast_seconds = _parse_positive_int(
             os.environ.get("FILTER_HOLD_FAST_SECONDS", "600").strip() or "600",
             "FILTER_HOLD_FAST_SECONDS",
@@ -160,11 +227,13 @@ class Settings:
             log_level=log_level,
             log_format=log_format,
             log_file=log_file_raw or None,
+            log_dir=log_dir,
             dedup_enabled=dedup_enabled,
             dedup_window_minutes=dedup_window_minutes,
             filter_window_start=filter_window_start,
             filter_window_end=filter_window_end,
             filter_timezone=filter_timezone,
+            filter_weekdays=filter_weekdays,
             filter_hold_fast_seconds=filter_hold_fast_seconds,
             filter_hold_critical_seconds=filter_hold_critical_seconds,
             filter_hold_warning_seconds=filter_hold_warning_seconds,

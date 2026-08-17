@@ -38,7 +38,7 @@ Port           Port            Port        LedgerPort      Port
 | `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
 | `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` com host, sem `starts_at` |
 | `entities/severity.py` | Severidade normalizada |
-| `services/alert_filter.py` | Politica de ruido (ack, hold-down por criticidade, janela, Watchdog, silenced/inhibited) |
+| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, silenced/inhibited) |
 | `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
 | `services/alert_view.py` | Snapshot texto: Client, Host, Service, Status, Duration, Started, Status information |
 
@@ -88,7 +88,7 @@ Overlap de ciclo: `poll.cycle.skipped_in_flight` (WARNING).
 |--------|--------|
 | `worker/main.py` | Composition root + loop do daemon |
 | `worker/cycle_guard.py` | Trava in-flight: um ciclo por vez no processo |
-| `logging/*` | Setup root logger (`text` / `json`), silence httpx |
+| `logging/*` | Setup root logger (`text` / `json`), tee diario em `LOG_DIR`, silence httpx |
 
 CLI: `--max-cycles` (opcional; omitido = loop infinito).
 
@@ -98,7 +98,7 @@ Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
 Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
-Filtros de janela: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar nela; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
+Filtros de janela: `FILTER_WINDOW_START` (default `13:30`), `FILTER_WINDOW_END` (default `18:00`), `FILTER_WEEKDAYS` (default `mon,tue,wed,thu,fri`; aceita `seg..dom` ou `0..6`), `FILTER_TIMEZONE` (default `America/Sao_Paulo`) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. `now` precisa estar no horario **e** em um dia util configurado; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
 
 Hold-down por criticidade (tipo ganha de severidade; keywords so em alertname/desc/status, nao no host):
 
@@ -111,3 +111,5 @@ Hold-down por criticidade (tipo ganha de severidade; keywords so em alertname/de
 Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
 
 Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um alerta claimed por `publish([alert])`; o mesmo texto do stdout vai ao webhook como mensagem `{"text": ...}` (sem cards estruturados do Chat e sem fence monoespaçado). Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.
+
+Arquivo diario: `LOG_DIR` (default `logs`; vazio desliga). O worker faz tee de stdout/stderr para `LOG_DIR/nagstamon-YYYY-MM-DD.log` no fuso `FILTER_TIMEZONE`, com flush a cada escrita (eventos e snapshot). No Docker o volume `logs/` do host aponta para `/var/log/nagstamon-headless`. `make app-clean` apaga em `logs/` o que nao for o arquivo do dia atual nem `.gitkeep`. `LOG_FILE` continua opcional para um arquivo extra so de eventos semanticos.

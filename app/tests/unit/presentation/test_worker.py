@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from datetime import time
 from pathlib import Path
 from threading import Event, Thread
@@ -53,7 +54,7 @@ class FakeUseCase:
         return self.result
 
 
-def _settings(tmp_path: Path) -> Settings:
+def _settings(tmp_path: Path, *, log_dir: Path | None = None) -> Settings:
     return Settings(
         servers_dir=tmp_path,
         proxy_addr="",
@@ -63,11 +64,13 @@ def _settings(tmp_path: Path) -> Settings:
         log_level="INFO",
         log_format="text",
         log_file=None,
+        log_dir=log_dir,
         dedup_enabled=True,
         dedup_window_minutes=30,
         filter_window_start=time(13, 30),
         filter_window_end=time(18, 0),
         filter_timezone="America/Sao_Paulo",
+        filter_weekdays=(0, 1, 2, 3, 4),
         filter_hold_fast_seconds=600,
         filter_hold_critical_seconds=900,
         filter_hold_warning_seconds=1200,
@@ -87,6 +90,7 @@ def test_build_use_case_empty_dir(tmp_path: Path) -> None:
     assert use_case._filter_policy._hold_fast_seconds == 600
     assert use_case._filter_policy._hold_critical_seconds == 900
     assert use_case._filter_policy._hold_warning_seconds == 1200
+    assert use_case._filter_policy._weekdays == frozenset({0, 1, 2, 3, 4})
 
 
 def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
@@ -100,11 +104,13 @@ def test_build_use_case_dedup_disabled(tmp_path: Path) -> None:
         log_level=settings.log_level,
         log_format=settings.log_format,
         log_file=settings.log_file,
+        log_dir=settings.log_dir,
         dedup_enabled=False,
         dedup_window_minutes=settings.dedup_window_minutes,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
+        filter_weekdays=settings.filter_weekdays,
         filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
         filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
         filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
@@ -130,11 +136,13 @@ def test_build_use_case_sound_enabled(tmp_path: Path) -> None:
         log_level=settings.log_level,
         log_format=settings.log_format,
         log_file=settings.log_file,
+        log_dir=settings.log_dir,
         dedup_enabled=settings.dedup_enabled,
         dedup_window_minutes=settings.dedup_window_minutes,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
+        filter_weekdays=settings.filter_weekdays,
         filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
         filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
         filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
@@ -159,11 +167,13 @@ def test_build_use_case_gchat_enabled(tmp_path: Path) -> None:
         log_level=settings.log_level,
         log_format=settings.log_format,
         log_file=settings.log_file,
+        log_dir=settings.log_dir,
         dedup_enabled=settings.dedup_enabled,
         dedup_window_minutes=settings.dedup_window_minutes,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
+        filter_weekdays=settings.filter_weekdays,
         filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
         filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
         filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
@@ -189,11 +199,13 @@ def test_build_use_case_file_ledger(tmp_path: Path) -> None:
         log_level=settings.log_level,
         log_format=settings.log_format,
         log_file=settings.log_file,
+        log_dir=settings.log_dir,
         dedup_enabled=True,
         dedup_window_minutes=settings.dedup_window_minutes,
         filter_window_start=settings.filter_window_start,
         filter_window_end=settings.filter_window_end,
         filter_timezone=settings.filter_timezone,
+        filter_weekdays=settings.filter_weekdays,
         filter_hold_fast_seconds=settings.filter_hold_fast_seconds,
         filter_hold_critical_seconds=settings.filter_hold_critical_seconds,
         filter_hold_warning_seconds=settings.filter_hold_warning_seconds,
@@ -226,6 +238,27 @@ def test_run_max_cycles_one(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     assert "skipped_duplicate_count=" in captured
     assert MONITOR_CONFIG_EMPTY not in captured
     reset_logging_state()
+
+
+def test_run_attaches_daily_log(tmp_path: Path) -> None:
+    reset_logging_state()
+    original_out = sys.stdout
+    original_err = sys.stderr
+    log_dir = tmp_path / "daily"
+    try:
+        code = run(
+            ["--max-cycles", "1"],
+            use_case=FakeUseCase(),  # type: ignore[arg-type]
+            settings=_settings(tmp_path, log_dir=log_dir),
+        )
+        assert code == 0
+        files = list(log_dir.glob("nagstamon-*.log"))
+        assert len(files) == 1
+        assert WORKER_STARTED in files[0].read_text(encoding="utf-8")
+    finally:
+        sys.stdout = original_out
+        sys.stderr = original_err
+        reset_logging_state()
 
 
 def test_run_two_cycles_calls_sleeper(tmp_path: Path) -> None:

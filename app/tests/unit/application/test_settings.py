@@ -17,6 +17,7 @@ def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOG_LEVEL", "INFO")
     monkeypatch.setenv("LOG_FORMAT", "text")
     monkeypatch.delenv("LOG_FILE", raising=False)
+    monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.delenv("GCHAT_WEBHOOK_URL", raising=False)
     monkeypatch.delenv("DEDUP_LEDGER_PATH", raising=False)
 
@@ -26,11 +27,13 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOG_LEVEL", "debug")
     monkeypatch.setenv("LOG_FORMAT", "json")
     monkeypatch.setenv("LOG_FILE", "logs/nagstamon.log")
+    monkeypatch.setenv("LOG_DIR", "logs")
     monkeypatch.setenv("DEDUP_ENABLED", "false")
     monkeypatch.setenv("DEDUP_WINDOW_MINUTES", "45")
     monkeypatch.setenv("FILTER_WINDOW_START", "14:00")
     monkeypatch.setenv("FILTER_WINDOW_END", "17:30")
     monkeypatch.setenv("FILTER_TIMEZONE", "UTC")
+    monkeypatch.setenv("FILTER_WEEKDAYS", "mon,wed,fri")
     monkeypatch.setenv("FILTER_HOLD_FAST_SECONDS", "90")
     monkeypatch.setenv("FILTER_HOLD_CRITICAL_SECONDS", "120")
     monkeypatch.setenv("FILTER_HOLD_WARNING_SECONDS", "300")
@@ -47,12 +50,14 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_level == "DEBUG"
     assert settings.log_format == "json"
     assert settings.log_file == "logs/nagstamon.log"
+    assert settings.log_dir == Path("logs")
     assert settings.dedup_enabled is False
     assert settings.dedup_window_minutes == 45
     assert settings.filter_window_start.hour == 14
     assert settings.filter_window_end.hour == 17
     assert settings.filter_window_end.minute == 30
     assert settings.filter_timezone == "UTC"
+    assert settings.filter_weekdays == (0, 2, 4)
     assert settings.filter_hold_fast_seconds == 90
     assert settings.filter_hold_critical_seconds == 120
     assert settings.filter_hold_warning_seconds == 300
@@ -71,11 +76,13 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOG_LEVEL", raising=False)
     monkeypatch.delenv("LOG_FORMAT", raising=False)
     monkeypatch.delenv("LOG_FILE", raising=False)
+    monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
     monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
     monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
     monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
+    monkeypatch.delenv("FILTER_WEEKDAYS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_FAST_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_CRITICAL_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_WARNING_SECONDS", raising=False)
@@ -92,6 +99,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.log_level == "INFO"
     assert settings.log_format == "text"
     assert settings.log_file is None
+    assert settings.log_dir == Path("logs")
     assert settings.dedup_enabled is True
     assert settings.dedup_window_minutes == 30
     assert settings.filter_window_start.hour == 13
@@ -99,6 +107,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.filter_window_end.hour == 18
     assert settings.filter_window_end.minute == 0
     assert settings.filter_timezone == "America/Sao_Paulo"
+    assert settings.filter_weekdays == (0, 1, 2, 3, 4)
     assert settings.filter_hold_fast_seconds == 600
     assert settings.filter_hold_critical_seconds == 900
     assert settings.filter_hold_warning_seconds == 1200
@@ -115,6 +124,15 @@ def test_settings_blank_log_level_and_format(monkeypatch: pytest.MonkeyPatch) ->
     settings = Settings.from_env()
     assert settings.log_level == "INFO"
     assert settings.log_format == "text"
+
+
+def test_settings_blank_log_dir_disables_daily_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("LOG_DIR", "  ")
+    settings = Settings.from_env()
+    assert settings.log_dir is None
 
 
 def test_settings_rejects_invalid_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -211,11 +229,13 @@ def test_settings_loads_dotenv_when_enabled(
     monkeypatch.delenv("LOG_LEVEL", raising=False)
     monkeypatch.delenv("LOG_FORMAT", raising=False)
     monkeypatch.delenv("LOG_FILE", raising=False)
+    monkeypatch.delenv("LOG_DIR", raising=False)
     monkeypatch.delenv("DEDUP_ENABLED", raising=False)
     monkeypatch.delenv("DEDUP_WINDOW_MINUTES", raising=False)
     monkeypatch.delenv("FILTER_WINDOW_START", raising=False)
     monkeypatch.delenv("FILTER_WINDOW_END", raising=False)
     monkeypatch.delenv("FILTER_TIMEZONE", raising=False)
+    monkeypatch.delenv("FILTER_WEEKDAYS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_FAST_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_CRITICAL_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_WARNING_SECONDS", raising=False)
@@ -230,6 +250,7 @@ def test_settings_loads_dotenv_when_enabled(
     settings = Settings.from_env()
     assert settings.servers_dir == Path("/from-dotenv")
     assert settings.refresh_interval == 7
+    assert settings.log_dir == Path("logs")
 
 
 def test_settings_rejects_invalid_filter_window(
@@ -257,10 +278,30 @@ def test_settings_blank_filter_window_and_timezone(
     monkeypatch.setenv("FILTER_WINDOW_START", "  ")
     monkeypatch.setenv("FILTER_WINDOW_END", "  ")
     monkeypatch.setenv("FILTER_TIMEZONE", "  ")
+    monkeypatch.setenv("FILTER_WEEKDAYS", "  ")
     settings = Settings.from_env()
     assert settings.filter_window_start.hour == 13
     assert settings.filter_window_end.hour == 18
     assert settings.filter_timezone == "America/Sao_Paulo"
+    assert settings.filter_weekdays == (0, 1, 2, 3, 4)
+
+
+def test_settings_parses_portuguese_weekdays(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WEEKDAYS", "seg, ter, qua, qui, sex")
+    settings = Settings.from_env()
+    assert settings.filter_weekdays == (0, 1, 2, 3, 4)
+    monkeypatch.setenv("FILTER_WEEKDAYS", "seg,seg,mon")
+    assert Settings.from_env().filter_weekdays == (0,)
+    monkeypatch.setenv("FILTER_WEEKDAYS", " , , ")
+    assert Settings.from_env().filter_weekdays == (0, 1, 2, 3, 4)
+
+
+def test_settings_rejects_invalid_weekdays(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("FILTER_WEEKDAYS", "mon,holiday")
+    with pytest.raises(ValueError, match="FILTER_WEEKDAYS"):
+        Settings.from_env()
 
 
 def test_settings_rejects_invalid_timezone(monkeypatch: pytest.MonkeyPatch) -> None:

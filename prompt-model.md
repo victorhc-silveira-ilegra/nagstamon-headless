@@ -31,7 +31,7 @@ Regras:
 - domain e application nao importam infrastructure nem presentation.
 - Ports sao contratos (Protocol / interface / trait). Adapters implementam ports na infrastructure.
 - Validacao de entidades fica no dominio.
-- Politica de filtros de negocio (hold-down por criticidade, ack, janela horaria, inicio apos o boot do processo) vive no dominio, e calculada em codigo (datetime), e injetada pelo composition root; dominio nao loga.
+- Politica de filtros de negocio (hold-down por criticidade, ack, janela horaria e dias uteis, inicio apos o boot do processo) vive no dominio, e calculada em codigo (datetime), e injetada pelo composition root; dominio nao loga.
 - Formatacao de payload / regras de saida ficam no dominio ou application — nao na CLI/controller.
 - Snapshot operacional de alertas (Client, Host, Service, Status, Duration, Started, Status information) e formatado no dominio.
 - Sink operacional pode ter canal extra (ex.: webhook de mensagem de texto, nao card estruturado); despacho idempotente via ledger (claim/confirm/release), sem segredo no git.
@@ -157,7 +157,7 @@ INVARIANTES (obrigatorios)
 1. Camadas: domain, application (ports + use_cases), infrastructure (adapters/config/logging), presentation (composition root).
 2. domain e application NAO importam infrastructure nem presentation.
 3. Ports como contratos; adapters na infrastructure.
-4. Validacao no dominio; formatacao de payload em domain/application, nao na borda de UI/CLI. Filtros de negocio (hold-down por criticidade, janela, boot) em codigo no dominio.
+4. Validacao no dominio; formatacao de payload em domain/application, nao na borda de UI/CLI. Filtros de negocio (hold-down por criticidade, janela, dias uteis, boot) em codigo no dominio.
 5. Domain e use case NAO logam; logging semantico na presentation/adapters (eventos *.started|finished|failed|skipped_*; sem dump de payload/segredos; redact de URLs; ~3 INFO no caminho feliz).
 6. Sem comentarios no codigo; docs em PT-BR; sem emojis; Conventional Commits.
 7. Config via .env na raiz + .env.example; nunca commitar segredos.

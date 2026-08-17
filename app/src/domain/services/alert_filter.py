@@ -25,6 +25,7 @@ DURATION_UNITS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
 DEFAULT_FILTER_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 DEFAULT_WINDOW_START = time(13, 30)
 DEFAULT_WINDOW_END = time(18, 0)
+DEFAULT_WEEKDAYS = (0, 1, 2, 3, 4)
 
 
 def parse_duration_seconds(raw: str) -> int | None:
@@ -52,6 +53,7 @@ class AlertFilterPolicy:
         *,
         window_start: time = DEFAULT_WINDOW_START,
         window_end: time = DEFAULT_WINDOW_END,
+        weekdays: Sequence[int] = DEFAULT_WEEKDAYS,
         timezone: ZoneInfo | None = None,
         hold_fast_seconds: int = HOLD_FAST_SECONDS,
         hold_critical_seconds: int = HOLD_CRITICAL_SECONDS,
@@ -61,6 +63,7 @@ class AlertFilterPolicy:
     ) -> None:
         self._window_start = window_start
         self._window_end = window_end
+        self._weekdays = frozenset(weekdays)
         self._timezone = timezone or DEFAULT_FILTER_TIMEZONE
         self._hold_fast_seconds = hold_fast_seconds
         self._hold_critical_seconds = hold_critical_seconds
@@ -72,8 +75,10 @@ class AlertFilterPolicy:
         return _aware(instant).astimezone(self._timezone)
 
     def _in_daily_window(self, instant: datetime) -> bool:
-        clock = self._localize(instant).time()
-        return self._window_start <= clock <= self._window_end
+        local = self._localize(instant)
+        if local.weekday() not in self._weekdays:
+            return False
+        return self._window_start <= local.time() <= self._window_end
 
     def _start_instant(self, alert: Alert, now: datetime) -> datetime | None:
         if alert.starts_at is not None:

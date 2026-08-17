@@ -11,7 +11,7 @@
 [![Semantic Release](https://img.shields.io/badge/release-semantic--release-e10079?logo=semantic-release&logoColor=white)](https://semantic-release.gitbook.io/)
 [![Architecture](https://img.shields.io/badge/architecture-hexagonal%20%2F%20DDD-0A66C2)](docs/arquitetura.md)
 
-Daemon headless que consulta monitores (Prometheus Alertmanager e Nagios CGI), aplica filtros de ruido (ack, hold-down por criticidade 10/15/20 min, janela horaria) e imprime os **alertas efetivos** no stdout (Client, Host, Service, Status, Duration, Started, Status information). Google Chat e opcional (`GCHAT_WEBHOOK_URL`) com a mesma mensagem de texto; despacho idempotente via ledger em `DEDUP_LEDGER_PATH`.
+Daemon headless que consulta monitores (Prometheus Alertmanager e Nagios CGI), aplica filtros de ruido (ack, hold-down por criticidade 10/15/20 min, janela comercial e dias uteis) e imprime os **alertas efetivos** no stdout (Client, Host, Service, Status, Duration, Started, Status information). Google Chat e opcional (`GCHAT_WEBHOOK_URL`) com a mesma mensagem de texto; despacho idempotente via ledger em `DEDUP_LEDGER_PATH`.
 
 Arquitetura: DDD / hexagonal. Qualidade: Ruff, mypy strict, vulture, pytest com cobertura 100% (branch), bandit e pip-audit.
 
@@ -36,9 +36,10 @@ make app-run
 make docker-up
 make docker-smoke
 make docker-logs
+make app-clean
 ```
 
-O orquestrador unico e `app/scripts/operations/clean_workspace.py`.
+O orquestrador unico e `app/scripts/operations/clean_workspace.py`. `make app-clean` apaga caches e logs em `logs/` que nao sejam do dia atual (`nagstamon-YYYY-MM-DD.log` e o arquivo vigente; o Docker grava nesse diretorio em tempo real).
 
 ## CI
 
