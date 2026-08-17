@@ -242,6 +242,59 @@ def test_filter_alertmanager_noise_and_silence() -> None:
     assert policy.is_filtered(_alert(inhibited_by=("i1",)), NOW)
 
 
+def test_filter_kubernetes_noise() -> None:
+    policy = AlertFilterPolicy()
+    started = NOW - timedelta(minutes=30)
+    kubelet = _alert(
+        alertname="KubeletServerCertificateExpiration",
+        starts_at=started,
+    )
+    cpu_pod = _alert(
+        alertname="AltoConsumodeCPUPod",
+        desc="POD spi-auto-pix-messenger com consumo de CPU",
+        starts_at=started,
+    )
+    k8s_desc = _alert(
+        alertname="NodeNotReady",
+        desc="kubernetes node not ready",
+        starts_at=started,
+    )
+    keep = _alert(
+        alertname="DBA  - CHECK TABLESPACES",
+        desc="ORA-01033",
+        starts_at=started,
+    )
+    java = _alert(
+        alertname="CHECK JAVA APPS",
+        desc="Socket timeout after 30 seconds",
+        starts_at=started,
+    )
+    k8s_token = _alert(
+        alertname="CrashLoop",
+        desc="k8s workload restarting",
+        starts_at=started,
+    )
+    kube_word = _alert(
+        alertname="ApiDown",
+        desc="kube api unreachable",
+        starts_at=started,
+    )
+    host_only = _alert(
+        alertname="HttpError",
+        desc="status 500",
+        host="kubelet-node-1",
+        starts_at=started,
+    )
+    assert policy.is_filtered(kubelet, NOW)
+    assert policy.is_filtered(cpu_pod, NOW)
+    assert policy.is_filtered(k8s_desc, NOW)
+    assert policy.is_filtered(k8s_token, NOW)
+    assert policy.is_filtered(kube_word, NOW)
+    assert not policy.is_filtered(keep, NOW)
+    assert not policy.is_filtered(java, NOW)
+    assert not policy.is_filtered(host_only, NOW)
+
+
 def test_filter_custom_window_and_timezone() -> None:
     policy = AlertFilterPolicy(
         window_start=time(10, 0),

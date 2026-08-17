@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class InMemoryAlertDispatchLedger:
@@ -16,13 +16,8 @@ class InMemoryAlertDispatchLedger:
         now: datetime,
         window_minutes: int,
     ) -> bool:
+        _ = window_minutes
         with self._lock:
-            cutoff = now - timedelta(minutes=window_minutes)
-            expired = [
-                key for key, claimed_at in self._claims.items() if claimed_at <= cutoff
-            ]
-            for key in expired:
-                del self._claims[key]
             claimed_at = self._claims.get(fingerprint)
             if claimed_at is not None:
                 return False

@@ -38,7 +38,7 @@ Port           Port            Port        LedgerPort      Port
 | `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
 | `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` com host, sem `starts_at` |
 | `entities/severity.py` | Severidade normalizada |
-| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, silenced/inhibited) |
+| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, Kubernetes, silenced/inhibited) |
 | `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
 | `services/alert_view.py` | Snapshot texto: Client, Host, Service, Status, Duration, Started, Status information |
 
@@ -96,7 +96,7 @@ CLI: `--max-cycles` (opcional; omitido = loop infinito).
 
 Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
-Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
+Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (mantido na env; fingerprints `sent` nao expiram) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). O mesmo alerta (server/alertname/host/desc) e emitido uma vez ate `release` (falha de Chat) ou apagar o ledger. `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
 Filtros de janela: `WINDOW_ENABLED` (default true), `WINDOW_START` (default `13:30`), `WINDOW_END` (default `18:00`), `WINDOW_DAYS` (default `mon,tue,wed,thu,fri`; aceita `seg..dom` ou `0..6`), `WINDOW_TIMEZONE` (default `America/Sao_Paulo`) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. Com a janela ligada, `now` precisa estar no horario **e** em um dia util configurado; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. `WINDOW_ENABLED=false` ignora horario e dia. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
 
@@ -112,4 +112,4 @@ Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta
 
 Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um alerta claimed por `publish([alert])`; o mesmo texto do stdout vai ao webhook como mensagem `{"text": ...}` (sem cards estruturados do Chat e sem fence monoespaçado). Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.
 
-Arquivo diario: `LOG_DIR` (default `logs`; vazio desliga). O worker faz tee de stdout/stderr para `LOG_DIR/nagstamon-YYYY-MM-DD.log` no fuso `WINDOW_TIMEZONE`, com flush a cada escrita (eventos e snapshot). No Docker o volume `logs/` do host aponta para `/var/log/nagstamon-headless`. `make app-clean` apaga em `logs/` o que nao for o arquivo do dia atual nem `.gitkeep`. `LOG_FILE` continua opcional para um arquivo extra so de eventos semanticos.
+Arquivo diario: `LOG_DIR` (default `logs`; vazio desliga). O worker faz tee de stdout/stderr para `LOG_DIR/nagstamon-YYYY-MM-DD.log` no fuso `WINDOW_TIMEZONE`, com o mesmo recorte do `make docker-logs` (INFO + snapshot). No Docker o volume `logs/` do host aponta para `/var/log/nagstamon-headless`. `make app-clean` apaga em `logs/` o que nao for o arquivo do dia atual nem `.gitkeep`. `LOG_FILE` continua opcional para um arquivo extra so de eventos semanticos.

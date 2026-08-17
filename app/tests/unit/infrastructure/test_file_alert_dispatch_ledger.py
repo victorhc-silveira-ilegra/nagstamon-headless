@@ -26,7 +26,7 @@ def test_parse_at_rejects_invalid() -> None:
     assert _parse_at(NOW.isoformat()) == NOW
 
 
-def test_file_ledger_claims_once_until_confirm_window(tmp_path: Path) -> None:
+def test_file_ledger_claims_once_after_confirm(tmp_path: Path) -> None:
     ledger = _ledger(tmp_path)
     assert ledger.try_claim(fingerprint="abc", now=NOW, window_minutes=30) is True
     assert ledger.try_claim(fingerprint="abc", now=NOW, window_minutes=30) is False
@@ -41,7 +41,13 @@ def test_file_ledger_claims_once_until_confirm_window(tmp_path: Path) -> None:
         ledger.try_claim(
             fingerprint="abc", now=NOW + timedelta(minutes=30), window_minutes=30
         )
-        is True
+        is False
+    )
+    assert (
+        ledger.try_claim(
+            fingerprint="abc", now=NOW + timedelta(days=2), window_minutes=30
+        )
+        is False
     )
 
 

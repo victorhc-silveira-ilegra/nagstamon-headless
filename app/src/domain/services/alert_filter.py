@@ -19,6 +19,13 @@ STATUS_INFO_FILTER = re.compile(
     r"Unknown error|Monitor URL not valid)"
 )
 NOISE_ALERTNAMES = frozenset({"watchdog", "infoinhibitor"})
+KUBE_NOISE = re.compile(
+    r"(?i)("
+    r"kubelet|kubernetes|"
+    r"(?<![a-z0-9])k8s(?![a-z0-9])|"
+    r"(?<![a-z0-9])kube(?![a-z0-9])"
+    r")"
+)
 SKIP_STATES = frozenset({"suppressed", "pending", "unprocessed"})
 MAX_DURATION_SECONDS = 86400
 DURATION_UNITS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
@@ -45,6 +52,13 @@ def parse_duration_seconds(raw: str) -> int | None:
 
 def _aware(instant: datetime) -> datetime:
     return instant if instant.tzinfo is not None else instant.replace(tzinfo=UTC)
+
+
+def _is_kubernetes_noise(alert: Alert) -> bool:
+    if "pod" in alert.alertname.lower():
+        return True
+    haystack = f"{alert.alertname} {alert.desc} {alert.status_text}"
+    return KUBE_NOISE.search(haystack) is not None
 
 
 class AlertFilterPolicy:
@@ -104,6 +118,8 @@ class AlertFilterPolicy:
         if STATUS_INFO_FILTER.search(status_text):
             return True
         if alert.alertname.lower() in NOISE_ALERTNAMES:
+            return True
+        if _is_kubernetes_noise(alert):
             return True
         if alert.alert_state in SKIP_STATES:
             return True

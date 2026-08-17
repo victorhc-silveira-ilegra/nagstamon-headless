@@ -72,9 +72,9 @@ class FakeLedger:
     def try_claim(
         self, *, fingerprint: str, now: datetime, window_minutes: int
     ) -> bool:
-        cutoff = now - timedelta(minutes=window_minutes)
+        _ = window_minutes
         claimed_at = self.claims.get(fingerprint)
-        if claimed_at is not None and claimed_at > cutoff:
+        if claimed_at is not None:
             return False
         self.claims[fingerprint] = now
         return True
@@ -206,7 +206,7 @@ def test_ledger_claims_first_and_skips_second() -> None:
     assert sink2.calls == 0
 
 
-def test_ledger_reclaims_after_window() -> None:
+def test_ledger_does_not_reclaim_after_window() -> None:
     alert = _alert()
     ledger = FakeLedger()
     clock = FakeClock()
@@ -216,8 +216,9 @@ def test_ledger_reclaims_after_window() -> None:
     clock.current = NOW + timedelta(minutes=30)
     sink = FakeAlertSink()
     result = _use_case(alerts=[alert], sink=sink, ledger=ledger, clock=clock).execute()
-    assert result.claimed_count == 1
-    assert sink.published == [alert]
+    assert result.claimed_count == 0
+    assert result.skipped_duplicate_count == 1
+    assert sink.published == []
 
 
 def test_sink_failure_releases_claim() -> None:

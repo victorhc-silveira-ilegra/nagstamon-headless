@@ -10,7 +10,7 @@ from infrastructure.adapters.in_memory_alert_dispatch_ledger import (
 NOW = datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC)
 
 
-def test_memory_ledger_claims_once_within_window() -> None:
+def test_memory_ledger_claims_once() -> None:
     ledger = InMemoryAlertDispatchLedger()
     assert ledger.try_claim(fingerprint="abc", now=NOW, window_minutes=30) is True
     assert (
@@ -23,7 +23,7 @@ def test_memory_ledger_claims_once_within_window() -> None:
         ledger.try_claim(
             fingerprint="abc", now=NOW + timedelta(minutes=30), window_minutes=30
         )
-        is True
+        is False
     )
 
 
@@ -70,9 +70,9 @@ def test_memory_ledger_thread_race_only_one_wins() -> None:
     assert results.count(False) == 7
 
 
-def test_memory_ledger_expires_stale_fingerprints() -> None:
+def test_memory_ledger_keeps_stale_fingerprints() -> None:
     ledger = InMemoryAlertDispatchLedger()
     assert ledger.try_claim(fingerprint="old", now=NOW, window_minutes=30) is True
     later = NOW + timedelta(minutes=30)
     assert ledger.try_claim(fingerprint="new", now=later, window_minutes=30) is True
-    assert ledger.try_claim(fingerprint="old", now=later, window_minutes=30) is True
+    assert ledger.try_claim(fingerprint="old", now=later, window_minutes=30) is False

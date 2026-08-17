@@ -13,6 +13,7 @@ from presentation.logging.daily import (
     TeeStream,
     attach_daily_stdio,
     daily_log_name,
+    is_noise_event_line,
     resolve_log_timezone,
     stale_daily_log_paths,
 )
@@ -140,3 +141,64 @@ def test_tee_stream_and_attach_daily_stdio(tmp_path: Path) -> None:
     files = list(live.glob("nagstamon-*.log"))
     assert len(files) == 1
     assert "snap" in files[0].read_text(encoding="utf-8")
+
+
+def test_is_noise_event_line() -> None:
+    assert is_noise_event_line(
+        "2026-08-17 16:19:07,704 WARNING event=monitor.fetch.failed"
+    )
+    assert is_noise_event_line('{"level": "WARNING", "event": "monitor.fetch.failed"}')
+    assert is_noise_event_line("2026-08-17 16:19:07,704 ERROR event=poll.cycle.failed")
+    assert not is_noise_event_line("2026-08-17 16:19:07,503 INFO event=worker.started")
+    assert not is_noise_event_line("*#1  CRITICAL*")
+    assert is_noise_event_line("2026-08-17 16:19:07,704 DEBUG event=trace")
+    assert is_noise_event_line('{"level": "CRITICAL", "event": "worker.boot.failed"}')
+
+
+def test_tee_stream_skips_noise_on_daily_file(tmp_path: Path) -> None:
+    zone = ZoneInfo("UTC")
+    daily = DailyLogFile(
+        tmp_path,
+        zone,
+        clock=lambda: datetime(2026, 8, 17, tzinfo=zone),
+    )
+    primary = io.StringIO()
+    tee = TeeStream(primary, daily)
+    tee.write("2026-08-17 16:19:07,503 INFO event=worker.started\n")
+    tee.write(
+        "2026-08-17 16:19:07,704 WARNING event=monitor.fetch.failed "
+        "error_type=ReadTimeout\n"
+    )
+    tee.write("*[2026-08-17 13:45:38 -0300]*  *1 alerta efetivo*\n")
+    tee.write("*#1  CRITICAL*\n")
+    tee.write('{"level": "ERROR", "event": "poll.cycle.failed"}\n')
+    tee.flush()
+    daily.close()
+    text = (tmp_path / "nagstamon-2026-08-17.log").read_text(encoding="utf-8")
+    assert "INFO event=worker.started" in text
+    assert "*#1  CRITICAL*" in text
+    assert "WARNING event=monitor.fetch.failed" not in text
+    assert '"level": "ERROR"' not in text
+    assert "WARNING event=monitor.fetch.failed" in primary.getvalue()
+
+
+def test_tee_stream_flush_pending_and_split_noise(tmp_path: Path) -> None:
+    zone = ZoneInfo("UTC")
+    daily = DailyLogFile(
+        tmp_path,
+        zone,
+        clock=lambda: datetime(2026, 8, 17, tzinfo=zone),
+    )
+    primary = io.StringIO()
+    tee = TeeStream(primary, daily)
+    tee.write("2026-08-17 16:19:07,503 INFO event=ok")
+    tee.flush()
+    tee.write("2026-08-17 16:19:07,704 WARNING eve")
+    tee.write("nt=monitor.fetch.failed\n")
+    tee.write("2026-08-17 16:19:07,705 DEBUG event=trace")
+    tee.flush()
+    daily.close()
+    text = (tmp_path / "nagstamon-2026-08-17.log").read_text(encoding="utf-8")
+    assert "INFO event=ok" in text
+    assert "WARNING event=monitor.fetch.failed" not in text
+    assert "DEBUG event=trace" not in text

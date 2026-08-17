@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Janela comercial respeita `WINDOW_ENABLED` (default `true`; `false` ignora horario e dias uteis).
+- Filtro de ruido Kubernetes (`kubelet` / `k8s` / `kube` / alertname com `pod`).
+- Ledger nao republica fingerprint `sent` (uma emissao ate `release` ou apagar o arquivo).
+- Arquivo diario em `LOG_DIR` segue o recorte do `make docker-logs` (INFO + snapshot).
 
 ## [1.5.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.4.0...v1.5.0) (2026-08-17)
 

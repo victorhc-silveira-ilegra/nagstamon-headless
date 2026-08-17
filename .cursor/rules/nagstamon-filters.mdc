@@ -19,10 +19,10 @@ Itens marcados na aba Filters do Nagstamon = excluir do snapshot efetivo.
 - Tipo ganha de severidade (ex.: CPU CRITICAL espera 20 min; DiskFull WARNING dispara aos 10 min). Keywords em alertname/desc/status, nao no host.
 - Janela: com `WINDOW_ENABLED=true` (default), `now` em `[WINDOW_START, WINDOW_END]` (`13:30`–`18:00`) `WINDOW_TIMEZONE` **e** em `WINDOW_DAYS` (default `mon,tue,wed,thu,fri`); se o inicio for conhecido, esse instante no mesmo intervalo **hoje**. `WINDOW_ENABLED=false` ignora horario e dia (hold-down, ack e boot continuam).
 - Boot: inicio conhecido anterior ao start do daemon (`not_before`) exclui.
-- Ja existentes: texto de erro HTTP, Watchdog/InfoInhibitor, states suppressed/pending/unprocessed, inhibited.
+- Ja existentes: texto de erro HTTP, Watchdog/InfoInhibitor, Kubernetes (`kubelet` / `kubernetes` / `k8s` / `kube` em alertname/desc/status; `pod` no alertname, ex. `AltoConsumodeCPUPod`), states suppressed/pending/unprocessed, inhibited.
 
 Construtor de `AlertFilterPolicy` recebe `WINDOW_ENABLED`, janela, dias uteis (`WINDOW_DAYS`), fuso, holds (`FILTER_HOLD_*`), teto de duracao e `not_before` (boot do worker). Dominio e use case **nao** logam.
 
 Som: port `play_new_alert()` so apos `confirm` de pelo menos um alerta (dedup off: lista efetiva nao vazia apos publish). Adapter fail-open (`poll.sound.failed` WARNING). `SOUND_ENABLED=true` no `.env`; compose pode forcar `false`.
 
-Chat e ledger: `GCHAT_WEBHOOK_URL` + `DEDUP_*` (`DEDUP_LEDGER_PATH` arquivo com flock, ou memoria se vazio). Um fingerprint por alerta (inclui host); claim/confirm/release; Chat = mensagem `{"text": ...}` (mesmo snapshot do stdout); raises apos log de falha.
+Chat e ledger: `GCHAT_WEBHOOK_URL` + `DEDUP_*` (`DEDUP_LEDGER_PATH` arquivo com flock, ou memoria se vazio). Um fingerprint por alerta (inclui host); claim/confirm/release; `sent` nao expira (so uma emissao ate `release` ou apagar o ledger). Chat = mensagem `{"text": ...}` (mesmo snapshot do stdout); raises apos log de falha.

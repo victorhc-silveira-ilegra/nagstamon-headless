@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Callable
 from datetime import date, datetime
@@ -10,6 +11,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 DAILY_LOG_PREFIX = "nagstamon-"
 DAILY_LOG_SUFFIX = ".log"
 DEFAULT_LOG_TIMEZONE = "America/Sao_Paulo"
+NOISE_EVENT_LINE = re.compile(
+    r" (WARNING|ERROR|DEBUG|CRITICAL) event="
+    r'|"level": "(WARNING|ERROR|DEBUG|CRITICAL)"'
+)
 
 
 def resolve_log_timezone(name: str | None) -> ZoneInfo:
@@ -22,6 +27,10 @@ def resolve_log_timezone(name: str | None) -> ZoneInfo:
 
 def daily_log_name(day: date) -> str:
     return f"{DAILY_LOG_PREFIX}{day.isoformat()}{DAILY_LOG_SUFFIX}"
+
+
+def is_noise_event_line(line: str) -> bool:
+    return NOISE_EVENT_LINE.search(line) is not None
 
 
 def stale_daily_log_paths(logs_dir: Path, today: date) -> list[Path]:
@@ -90,14 +99,23 @@ class TeeStream:
     def __init__(self, primary: TextIO, secondary: DailyLogFile) -> None:
         self._primary = primary
         self._secondary = secondary
+        self._pending = ""
 
     def write(self, data: str) -> int:
         self._primary.write(data)
-        self._secondary.write(data)
+        self._pending += data
+        while "\n" in self._pending:
+            line, self._pending = self._pending.split("\n", 1)
+            if not is_noise_event_line(line):
+                self._secondary.write(f"{line}\n")
         return len(data)
 
     def flush(self) -> None:
         self._primary.flush()
+        if self._pending:
+            if not is_noise_event_line(self._pending):
+                self._secondary.write(self._pending)
+            self._pending = ""
         self._secondary.flush()
 
     def isatty(self) -> bool:

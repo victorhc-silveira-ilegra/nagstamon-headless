@@ -52,6 +52,7 @@ Ports sao `typing.Protocol` (sem ABC).
 - inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
+- Kubernetes (`kubelet`, `kubernetes`, `k8s`, `kube` em alertname/desc/status; `pod` no alertname)
 - states suppressed/pending/unprocessed e silenced/inhibited
 
 `AlertView` (`domain/services/alert_view.py`): snapshot operacional em texto (CRITICAL primeiro). Labels em `*negrito*` (markdown do Chat) e colunas com NBSP. Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`. Google Chat recebe o mesmo texto como mensagem (`{"text": ...}`), sem card estruturado e sem fence monoespaçado.

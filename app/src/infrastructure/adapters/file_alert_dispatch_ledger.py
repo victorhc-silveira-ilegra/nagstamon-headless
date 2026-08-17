@@ -78,8 +78,7 @@ class FileAlertDispatchLedger:
         tmp.write_text(json.dumps(records, ensure_ascii=True), encoding="utf-8")
         os.replace(tmp, self._path)
 
-    def _prune(self, records: Store, *, now: datetime, window_minutes: int) -> Store:
-        cutoff = now - timedelta(minutes=window_minutes)
+    def _prune(self, records: Store, *, now: datetime) -> Store:
         pending_cutoff = now - timedelta(seconds=self._pending_ttl_seconds)
         kept: Store = {}
         for key, record in records.items():
@@ -87,8 +86,6 @@ class FileAlertDispatchLedger:
             if instant is None:
                 continue
             status = record.get("status")
-            if status == STATUS_SENT and instant <= cutoff:
-                continue
             if status == STATUS_PENDING and instant <= pending_cutoff:
                 continue
             kept[key] = record
@@ -101,11 +98,11 @@ class FileAlertDispatchLedger:
         now: datetime,
         window_minutes: int,
     ) -> bool:
+        _ = window_minutes
         with self._exclusive():
             records = self._prune(
                 self._load(),
                 now=now,
-                window_minutes=window_minutes,
             )
             if fingerprint in records:
                 return False
