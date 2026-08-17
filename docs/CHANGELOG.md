@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.6.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.5.0...v1.6.0) (2026-08-17)
+
 ## Unreleased
 
 - Janela comercial respeita `WINDOW_ENABLED` (default `true`; `false` ignora horario e dias uteis).
