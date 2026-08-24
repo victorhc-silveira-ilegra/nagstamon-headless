@@ -102,11 +102,11 @@ def test_alert_validation() -> None:
 
 def test_alert_dedup_key_stable_and_ignores_starts_at() -> None:
     first = _alert(desc="  disk is full  ", starts_at=NOW)
-    second = _alert(starts_at=None)
+    second = _alert(starts_at=None, desc="different text (95% used)")
     other = _alert(alertname="CPU")
     other_host = _alert(host="db02")
     assert first.dedup_key() == second.dedup_key()
-    assert first.dedup_key() == "prod\0DiskFull\0db01\0\0disk is full"
+    assert first.dedup_key() == "prod\0DiskFull\0db01\0"
     assert other.dedup_key() != first.dedup_key()
     assert other_host.dedup_key() != first.dedup_key()
 

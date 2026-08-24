@@ -206,6 +206,31 @@ def test_ledger_claims_first_and_skips_second() -> None:
     assert sink2.calls == 0
 
 
+def test_ledger_skips_duplicate_even_when_desc_and_status_fluctuate() -> None:
+    first_alert = _alert(
+        desc="WARNING: 14980031kb used",
+        status_text="WARNING: 14980031kb used",
+        duration_str="0d 0h 55m 25s",
+    )
+    second_alert = _alert(
+        desc="WARNING: 15011996kb used",
+        status_text="WARNING: 15011996kb used",
+        duration_str="0d 1h 0m 58s",
+    )
+    ledger = FakeLedger()
+    sink = FakeAlertSink()
+    first_cycle = _use_case(alerts=[first_alert], sink=sink, ledger=ledger).execute()
+    assert first_cycle.claimed_count == 1
+    assert sink.published == [first_alert]
+    assert ledger.confirmed == [fingerprint_for(first_alert)]
+    assert fingerprint_for(first_alert) == fingerprint_for(second_alert)
+    sink2 = FakeAlertSink()
+    second_cycle = _use_case(alerts=[second_alert], sink=sink2, ledger=ledger).execute()
+    assert second_cycle.claimed_count == 0
+    assert second_cycle.skipped_duplicate_count == 1
+    assert sink2.calls == 0
+
+
 def test_ledger_does_not_reclaim_after_window() -> None:
     alert = _alert()
     ledger = FakeLedger()

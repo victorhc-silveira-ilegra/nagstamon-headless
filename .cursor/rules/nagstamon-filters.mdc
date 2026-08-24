@@ -25,4 +25,4 @@ Construtor de `AlertFilterPolicy` recebe `WINDOW_ENABLED`, janela, dias uteis (`
 
 Som: port `play_new_alert()` so apos `confirm` de pelo menos um alerta (dedup off: lista efetiva nao vazia apos publish). Adapter fail-open (`poll.sound.failed` WARNING). `SOUND_ENABLED=true` no `.env`; compose pode forcar `false`.
 
-Chat e ledger: `GCHAT_WEBHOOK_URL` + `DEDUP_*` (`DEDUP_LEDGER_PATH` arquivo com flock, ou memoria se vazio). Um fingerprint por alerta (inclui host); claim/confirm/release; `sent` nao expira (so uma emissao ate `release` ou apagar o ledger). Chat = mensagem `{"text": ...}` (mesmo snapshot do stdout); raises apos log de falha.
+Chat e ledger: `GCHAT_WEBHOOK_URL` + `DEDUP_*` (`DEDUP_LEDGER_PATH` arquivo com flock, ou memoria se vazio). Um fingerprint por alerta/problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico); claim/confirm/release; `sent` nao expira (so uma emissao por problema enquanto persistir, ate `release` ou apagar o ledger). Chat = mensagem `{"text": ...}` (mesmo snapshot do stdout); raises apos log de falha.

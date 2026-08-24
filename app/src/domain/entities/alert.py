@@ -43,4 +43,4 @@ class Alert:
         object.__setattr__(self, "host", self.host.strip())
 
     def dedup_key(self) -> str:
-        return f"{self.server}\0{self.alertname}\0{self.app}\0{self.host}\0{self.desc}"
+        return f"{self.server}\0{self.alertname}\0{self.app}\0{self.host}"

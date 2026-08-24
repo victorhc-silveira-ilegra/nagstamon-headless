@@ -29,7 +29,7 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 | `MonitorClientPort` | `CompositeMonitorClient` | httpx; fail-open por servidor |
 | `AlertSinkPort` | `StdoutAlertSink` + `GoogleChatWebhookSink` via `CompositeAlertSink` | mesmo snapshot texto no stdout e no webhook (`{"text": ...}`); Chat raises apos log para o ledger dar release |
 | `ClockPort` | `SystemClock` | UTC |
-| `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | `try_claim` / `confirm` / `release`; arquivo com flock se `DEDUP_LEDGER_PATH` |
+| `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | `try_claim` / `confirm` / `release`; dedup por problema (`server`/`alertname`/`app`/`host`); arquivo com flock se `DEDUP_LEDGER_PATH` |
 | `AlertSoundPort` | `PopenAlertSound` | WAV 440 Hz; `paplay`/`aplay`; fail-open |
 
 Ports sao `typing.Protocol` (sem ABC).

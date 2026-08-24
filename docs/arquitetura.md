@@ -36,7 +36,7 @@ Port           Port            Port        LedgerPort      Port
 | Modulo | Papel |
 |--------|--------|
 | `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
-| `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` com host, sem `starts_at` |
+| `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` do problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico nem `starts_at`) |
 | `entities/severity.py` | Severidade normalizada |
 | `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, Kubernetes, silenced/inhibited) |
 | `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
@@ -96,7 +96,7 @@ CLI: `--max-cycles` (opcional; omitido = loop infinito).
 
 Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
 
-Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (mantido na env; fingerprints `sent` nao expiram) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). O mesmo alerta (server/alertname/host/desc) e emitido uma vez ate `release` (falha de Chat) ou apagar o ledger. `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
+Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (mantido na env; fingerprints `sent` nao expiram) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). O mesmo alerta/problema (server/alertname/app/host) e emitido uma vez ate `release` (falha de Chat) ou apagar o ledger, mesmo que a descricao ou metricas dinamicas (KB de memoria, latencia HTTP, duracao) variem nos ciclos subsequentes. `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
 
 Filtros de janela: `WINDOW_ENABLED` (default true), `WINDOW_START` (default `13:30`), `WINDOW_END` (default `18:00`), `WINDOW_DAYS` (default `mon,tue,wed,thu,fri`; aceita `seg..dom` ou `0..6`), `WINDOW_TIMEZONE` (default `America/Sao_Paulo`) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. Com a janela ligada, `now` precisa estar no horario **e** em um dia util configurado; se o inicio do alerta for conhecido, tambem precisa cair no mesmo intervalo hoje. `WINDOW_ENABLED=false` ignora horario e dia. Inicio conhecido anterior ao boot do processo nao dispara stdout/Chat. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
 

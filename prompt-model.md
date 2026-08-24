@@ -34,7 +34,7 @@ Regras:
 - Politica de filtros de negocio (hold-down por criticidade, ack, janela horaria e dias uteis, inicio apos o boot do processo) vive no dominio, e calculada em codigo (datetime), e injetada pelo composition root; dominio nao loga.
 - Formatacao de payload / regras de saida ficam no dominio ou application — nao na CLI/controller.
 - Snapshot operacional de alertas (Client, Host, Service, Status, Duration, Started, Status information) e formatado no dominio.
-- Sink operacional pode ter canal extra (ex.: webhook de mensagem de texto, nao card estruturado); despacho idempotente via ledger (claim/confirm/release), sem segredo no git.
+- Sink operacional pode ter canal extra (ex.: webhook de mensagem de texto, nao card estruturado); despacho idempotente por problema via ledger (claim/confirm/release), sem segredo no git.
 - Domain e use case nao emitem logs. Logging semantico fica na presentation e/ou adapters.
 - Composition root (wiring Settings → adapters → use case) fica na presentation.
 

@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- Deduplicacao por problema: `Alert.dedup_key()` remove `desc`/metricas dinamicas (`server`/`alertname`/`app`/`host`), garantindo emissao unica por problema mesmo com variacao de uso de memoria, latencia ou duracao.
 - Janela comercial respeita `WINDOW_ENABLED` (default `true`; `false` ignora horario e dias uteis).
 - Filtro de ruido Kubernetes (`kubelet` / `k8s` / `kube` / alertname com `pod`).
 - Ledger nao republica fingerprint `sent` (uma emissao ate `release` ou apagar o arquivo).
