@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.7.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.7.0...v1.7.1) (2026-08-25)
+
+### Bug Fixes
+
+* deduplica alerta por problema ignorando metricas dinamicas ([09032b9](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/09032b937240c9f77efcb6d571f90d0daea9c6be))
+
 ## [1.7.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.6.0...v1.7.0) (2026-08-17)
 
 ## [1.6.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.5.0...v1.6.0) (2026-08-17)
