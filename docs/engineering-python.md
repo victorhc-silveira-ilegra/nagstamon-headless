@@ -48,8 +48,8 @@ Ports sao `typing.Protocol` (sem ABC).
 
 - `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
 - duracao so em Python: hold-down acima ate &lt; `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `duration_str`; INFO e sem inicio conhecido nao disparam
-- janela diaria `[WINDOW_START, WINDOW_END]` em `WINDOW_TIMEZONE` e em `WINDOW_DAYS` (default seg–sex), quando `WINDOW_ENABLED=true`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje
-- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo
+- janela diaria `[WINDOW_START, WINDOW_END]` em `WINDOW_TIMEZONE` e em `WINDOW_DAYS` (default seg–sex), quando `WINDOW_ENABLED=true`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje (ou antes da janela se `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true`, default no turno da manha)
+- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo, exceto quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` (turno da manha)
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
 - Kubernetes (`kubelet`, `kubernetes`, `k8s`, `kube` em alertname/desc/status; `pod` no alertname)
@@ -97,7 +97,7 @@ Fakes/Mocks: fakes dos ports, `httpx.BaseTransport`, sleeper injetavel no worker
 - Compose: `docker compose --env-file .env ...`
 - Python: `load_project_dotenv(override=True)` em `Settings.from_env()`
 - Nunca commitar proxy interno real nem senhas dos `.conf`
-- `WINDOW_ENABLED` (default true), `WINDOW_START` / `WINDOW_END` (`HH:MM`), `WINDOW_DAYS` (`mon,tue,wed,thu,fri`), `WINDOW_TIMEZONE` (IANA), `FILTER_HOLD_FAST_SECONDS` (600), `FILTER_HOLD_CRITICAL_SECONDS` (900), `FILTER_HOLD_WARNING_SECONDS` (1200), `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria).
+- `WINDOW_ENABLED` (default true), `WINDOW_START` / `WINDOW_END` (`HH:MM`), `WINDOW_DAYS` (`mon,tue,wed,thu,fri`), `WINDOW_TIMEZONE` (IANA), `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (default true se manha `WINDOW_START < 12:00`), `FILTER_HOLD_FAST_SECONDS` (600), `FILTER_HOLD_CRITICAL_SECONDS` (900), `FILTER_HOLD_WARNING_SECONDS` (1200), `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria).
 
 ## Entrypoints
 

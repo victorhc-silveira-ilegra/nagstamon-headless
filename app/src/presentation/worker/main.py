@@ -101,6 +101,7 @@ def build_use_case(settings: Settings) -> PollMonitorsUseCase:
             max_duration_seconds=settings.filter_duration_max_seconds,
             not_before=clock.now(),
             window_enabled=settings.filter_window_enabled,
+            allow_past_active_alerts=settings.filter_window_allow_past_active_alerts,
         ),
         dispatch_ledger=_dispatch_ledger(settings),
         alert_sound=sound,

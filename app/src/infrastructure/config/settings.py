@@ -134,6 +134,7 @@ class Settings:
     filter_window_enabled: bool
     filter_window_start: time
     filter_window_end: time
+    filter_window_allow_past_active_alerts: bool
     filter_timezone: str
     filter_weekdays: tuple[int, ...]
     filter_hold_fast_seconds: int
@@ -189,6 +190,11 @@ class Settings:
             os.environ.get("WINDOW_END", "18:00").strip() or "18:00",
             "WINDOW_END",
         )
+        allow_past_raw = os.environ.get("WINDOW_ALLOW_PAST_ACTIVE_ALERTS", "").strip()
+        if allow_past_raw:
+            filter_window_allow_past_active_alerts = _parse_bool(allow_past_raw)
+        else:
+            filter_window_allow_past_active_alerts = filter_window_start < time(12, 0)
         filter_timezone = _parse_timezone(os.environ.get("WINDOW_TIMEZONE", ""))
         filter_weekdays = _parse_weekdays(os.environ.get("WINDOW_DAYS", ""))
         filter_hold_fast_seconds = _parse_positive_int(
@@ -235,6 +241,7 @@ class Settings:
             filter_window_enabled=filter_window_enabled,
             filter_window_start=filter_window_start,
             filter_window_end=filter_window_end,
+            filter_window_allow_past_active_alerts=filter_window_allow_past_active_alerts,
             filter_timezone=filter_timezone,
             filter_weekdays=filter_weekdays,
             filter_hold_fast_seconds=filter_hold_fast_seconds,

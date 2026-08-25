@@ -12,6 +12,7 @@ from domain.entities.severity import Severity
 from domain.services.alert_filter import AlertFilterPolicy, parse_duration_seconds
 
 NOW = datetime(2026, 8, 13, 17, 0, 0, tzinfo=UTC)
+SP_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def _alert(**overrides: object) -> Alert:
@@ -436,3 +437,93 @@ def test_filter_hold_classes_and_missing_start() -> None:
     assert not policy.is_filtered(down, NOW)
     assert policy.is_filtered(pix_host, NOW)
     assert policy.is_filtered(_alert(), NOW)
+
+
+def test_filter_morning_shift_allows_past_active_alerts_and_dawn() -> None:
+    now_morning = datetime(2026, 8, 14, 8, 35, 0, tzinfo=SP_TZ)
+    boot = now_morning
+    policy = AlertFilterPolicy(
+        window_start=time(8, 30),
+        window_end=time(13, 30),
+        timezone=SP_TZ,
+        not_before=boot,
+        allow_past_active_alerts=True,
+    )
+    dawn_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 6, 0, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    overnight_alert = _alert(
+        starts_at=datetime(2026, 8, 13, 23, 0, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    prior_boot_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 8, 15, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    too_new_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 8, 30, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    assert not policy.is_filtered(dawn_alert, now_morning)
+    assert not policy.is_filtered(overnight_alert, now_morning)
+    assert not policy.is_filtered(prior_boot_alert, now_morning)
+    assert policy.is_filtered(too_new_alert, now_morning)
+
+
+def test_filter_morning_shift_rejects_outside_window_or_expired() -> None:
+    now_morning = datetime(2026, 8, 14, 8, 35, 0, tzinfo=SP_TZ)
+    now_night = datetime(2026, 8, 14, 20, 0, 0, tzinfo=SP_TZ)
+    policy = AlertFilterPolicy(
+        window_start=time(8, 30),
+        window_end=time(13, 30),
+        timezone=SP_TZ,
+        not_before=now_morning,
+        allow_past_active_alerts=True,
+    )
+    old_alert = _alert(
+        starts_at=now_morning - timedelta(days=2),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    dawn_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 6, 0, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    assert policy.is_filtered(old_alert, now_morning)
+    assert policy.is_filtered(dawn_alert, now_night)
+
+
+def test_filter_afternoon_shift_rejects_morning_alerts() -> None:
+    boot_afternoon = datetime(2026, 8, 14, 13, 35, 0, tzinfo=SP_TZ)
+    now_afternoon = datetime(2026, 8, 14, 14, 0, 0, tzinfo=SP_TZ)
+    policy = AlertFilterPolicy(
+        window_start=time(13, 30),
+        window_end=time(18, 0),
+        timezone=SP_TZ,
+        not_before=boot_afternoon,
+        allow_past_active_alerts=False,
+    )
+    dawn_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 6, 0, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    morning_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 10, 0, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    afternoon_alert = _alert(
+        starts_at=datetime(2026, 8, 14, 13, 40, 0, tzinfo=SP_TZ),
+        severity=Severity("critical"),
+        alertname="HttpError",
+    )
+    assert policy.is_filtered(dawn_alert, now_afternoon)
+    assert policy.is_filtered(morning_alert, now_afternoon)
+    assert not policy.is_filtered(afternoon_alert, now_afternoon)

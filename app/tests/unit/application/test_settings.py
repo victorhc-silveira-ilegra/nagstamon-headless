@@ -57,6 +57,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.filter_window_start.hour == 14
     assert settings.filter_window_end.hour == 17
     assert settings.filter_window_end.minute == 30
+    assert settings.filter_window_allow_past_active_alerts is False
     assert settings.filter_timezone == "UTC"
     assert settings.filter_weekdays == (0, 2, 4)
     assert settings.filter_hold_fast_seconds == 90
@@ -85,10 +86,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("WINDOW_END", raising=False)
     monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
     monkeypatch.delenv("WINDOW_DAYS", raising=False)
-    monkeypatch.delenv("WINDOW_START", raising=False)
-    monkeypatch.delenv("WINDOW_END", raising=False)
-    monkeypatch.delenv("WINDOW_DAYS", raising=False)
-    monkeypatch.delenv("WINDOW_TIMEZONE", raising=False)
+    monkeypatch.delenv("WINDOW_ALLOW_PAST_ACTIVE_ALERTS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_FAST_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_CRITICAL_SECONDS", raising=False)
     monkeypatch.delenv("FILTER_HOLD_WARNING_SECONDS", raising=False)
@@ -113,6 +111,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.filter_window_start.minute == 30
     assert settings.filter_window_end.hour == 18
     assert settings.filter_window_end.minute == 0
+    assert settings.filter_window_allow_past_active_alerts is False
     assert settings.filter_timezone == "America/Sao_Paulo"
     assert settings.filter_weekdays == (0, 1, 2, 3, 4)
     assert settings.filter_hold_fast_seconds == 600
@@ -398,3 +397,28 @@ def test_settings_ignores_legacy_names(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.filter_window_start.hour == 13
     assert settings.filter_window_start.minute == 30
     assert settings.gchat_webhook_url == ""
+
+
+def test_settings_morning_shift_defaults_allow_past_alerts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("WINDOW_START", "08:30")
+    monkeypatch.setenv("WINDOW_END", "13:30")
+    monkeypatch.delenv("WINDOW_ALLOW_PAST_ACTIVE_ALERTS", raising=False)
+    settings = Settings.from_env()
+    assert settings.filter_window_start.hour == 8
+    assert settings.filter_window_start.minute == 30
+    assert settings.filter_window_end.hour == 13
+    assert settings.filter_window_end.minute == 30
+    assert settings.filter_window_allow_past_active_alerts is True
+
+
+def test_settings_explicit_allow_past_alerts(monkeypatch: pytest.MonkeyPatch) -> None:
+    _base_env(monkeypatch)
+    monkeypatch.setenv("WINDOW_START", "13:30")
+    monkeypatch.setenv("WINDOW_ALLOW_PAST_ACTIVE_ALERTS", "true")
+    assert Settings.from_env().filter_window_allow_past_active_alerts is True
+    monkeypatch.setenv("WINDOW_START", "08:30")
+    monkeypatch.setenv("WINDOW_ALLOW_PAST_ACTIVE_ALERTS", "false")
+    assert Settings.from_env().filter_window_allow_past_active_alerts is False
