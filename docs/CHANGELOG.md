@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.7.1...v1.8.0) (2026-08-25)
+
+### Features
+
+* permite emitir alertas ativos anteriores ao boot no turno da manha ([74cb1ac](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/74cb1ac3feb2088ac88f436e8b09045551192af0))
+
 ## [1.7.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.7.0...v1.7.1) (2026-08-25)
 
 ### Bug Fixes
