@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.9.0...v1.9.1) (2026-08-26)
+
+### Bug Fixes
+
+* auto-detecta interface dinamica de vpn no smoke test ([bbf00be](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/bbf00be9105b38490579bdc82d6d515888dd3966))
+
 ## [1.9.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.8.0...v1.9.0) (2026-08-26)
 
 ### Features
