@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -12,9 +11,6 @@ from domain.services.alert_hold import hold_seconds
 DISPLAY_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 MISSING = "--"
 PLACEHOLDERS = frozenset({"", "n/a", "nagiosalert", "cgi service"})
-LABEL_WIDTH = len("Tempo decorrido (SLA):")
-INFO_WRAP = 56
-NBSP = "\u00a0"
 SEVERITY_RANK = {"CRITICAL": 0, "WARNING": 1}
 
 _ENV_NORMALIZE = {
@@ -202,14 +198,8 @@ def _markup_value(value: str) -> str:
 
 
 def _labeled(label: str, value: str) -> str:
-    visible = f"{label}:"
-    prefix = f"*{visible}*"
-    gutter = (NBSP * (LABEL_WIDTH - len(visible))) + NBSP
-    wrapped = textwrap.wrap(_markup_value(value), width=INFO_WRAP) or [MISSING]
-    hang = NBSP * (LABEL_WIDTH + 3)
-    first = f"{prefix}{gutter}{wrapped[0]}"
-    extra = [f"{hang}{part}" for part in wrapped[1:]]
-    return "\n".join([first, *extra])
+    val = _markup_value(value).strip() or MISSING
+    return f"*{label}:* {val}"
 
 
 def _sort_key(alert: Alert) -> tuple[int, str, str, str]:

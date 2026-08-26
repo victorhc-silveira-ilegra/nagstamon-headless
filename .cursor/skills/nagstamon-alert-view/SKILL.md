@@ -10,21 +10,21 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 ## Layout
 
 ```text
-*Status:*                CRITICAL
-*Client:*                core
-*Host:*                  db01.prod
-*Service:*               DiskFull
-*Ambiente:*              PRD
-*Duração no Nagstamon:*  0d 2h 15m
-*Horário do envio:*      14:00:00 (14/08/2026)
-*Início do alarme:*      11:45:00 (14/08/2026)
-*Status information:*    filesystem /var is 95 percent full
-*Criticidade SLA:*       Muito Crítico (Carência: 10m)
+*Status:* CRITICAL
+*Client:* core
+*Host:* db01.prod
+*Service:* DiskFull
+*Ambiente:* PRD
+*Duração no Nagstamon:* 0d 2h 15m
+*Horário do envio:* 14:00:00 (14/08/2026)
+*Início do alarme:* 11:45:00 (14/08/2026)
+*Status information:* filesystem /var is 95 percent full
+*Criticidade SLA:* Muito Crítico (Carência: 10m)
 *Tempo decorrido (SLA):* 135m
 *ID do Incidente (SLA):* core/DiskFull/db01.prod
 ```
 
-Stdout e Google Chat usam o **mesmo** texto plano (`text` do webhook, sem card JSON e sem fence monoespaçado). Labels em `*negrito*` e colunas com NBSP. Valores alinhados apos o label mais longo (`Tempo decorrido (SLA):`).
+Stdout e Google Chat usam o **mesmo** texto plano (`text` do webhook, sem card JSON e sem fence monoespaçado). Formato limpo chave-valor (`*Campo:* Valor`), sem tabulação artificial por espaços (evitando desalinhamento em fontes proporcionais do Chat) e sem quebra forçada.
 
 Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert])`, um POST no Google Chat com o mesmo texto formatado. Zero alertas = sem saída no sink.
 
@@ -41,4 +41,4 @@ Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert
 - AM: Host de `hostname|host|pod|instance|application|namespace`; Info de `description|summary|message|title`.
 - CGI: tabelas aninhadas do status.cgi; Host/Service dos href `host=`/`service=`; Duration `0d 2h 15m` (espacos normalizados); Started derivado da duracao se nao houver `starts_at`; ack via `statusCRITICALACK` ou texto acknowledged.
 - Sem emojis, sem one-liner antigo, sem comentarios no codigo.
-- UI: mensagem de texto com labels em negrito (`*Label:*`) e tabulacao com NBSP; gutter = pad ate `Status information:` + 1 NBSP; sem cards estruturados do Chat e sem bloco de codigo.
+- UI: mensagem de texto com labels em negrito (`*Label:* Valor`); sem cards estruturados do Chat e sem bloco de codigo.

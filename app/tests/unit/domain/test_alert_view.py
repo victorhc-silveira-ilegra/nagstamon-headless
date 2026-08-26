@@ -7,9 +7,7 @@ from domain.entities.alert import Alert
 from domain.entities.severity import Severity
 from domain.services.alert_view import (
     DISPLAY_TIMEZONE,
-    LABEL_WIDTH,
     MISSING,
-    NBSP,
     detect_environment,
     format_alarm_start,
     format_clock_time,
@@ -29,9 +27,7 @@ FETCHED = datetime(2026, 8, 14, 17, 0, 0, tzinfo=UTC)
 
 
 def _row(label: str, value: str) -> str:
-    visible = f"{label}:"
-    pad = LABEL_WIDTH - len(visible) + 1
-    return f"*{visible}*{NBSP * pad}{value}"
+    return f"*{label}:* {value}"
 
 
 def _alert(**overrides: object) -> Alert:
@@ -152,12 +148,6 @@ def test_render_card_fields_and_wrap() -> None:
     assert _row("Criticidade SLA", "Muito Crítico (Carência: 10m)") in text
     assert _row("Tempo decorrido (SLA)", "--") in text
     assert _row("ID do Incidente (SLA)", "core/DiskFull/db01.prod") in text
-    assert f"\n{NBSP * (LABEL_WIDTH + 3)}" in text
-    client = next(line for line in text.splitlines() if line.startswith("*Client:*"))
-    info = next(
-        line for line in text.splitlines() if line.startswith("*Status information:*")
-    )
-    assert client.index("core") == info.index("inode")
 
 
 def test_render_started_duration_and_sort() -> None:
