@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.8.0...v1.9.0) (2026-08-26)
+
+### Features
+
+* enriquece snapshot do alerta com ambiente, horarios e metricas de sla/slo ([bfd6fe8](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/bfd6fe8214f2ecfe4db0f29a9eaa61cd67d87799))
+
 ## [1.8.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.7.1...v1.8.0) (2026-08-25)
 
 ### Features
