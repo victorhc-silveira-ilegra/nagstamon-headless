@@ -163,20 +163,27 @@ def test_stdout_sink_prints_alerts(caplog: pytest.LogCaptureFixture) -> None:
         sink.publish([alert], fetched_at=fetched_at)
     text = stream.getvalue()
     assert "1 alerta efetivo" in text
+    assert "*Status:*" in text
+    assert "CRITICAL" in text
     assert "*Client:*" in text
     assert "core-very-long-server-name-exceeds-limit" in text
     assert "*Host:*" in text
     assert "db01.prod" in text
     assert "*Service:*" in text
     assert "DiskFull" in text
-    assert "*Status:*" in text
-    assert "CRITICAL" in text
-    assert "*Duration:*" in text
+    assert "*Ambiente:*" in text
+    assert "PRD" in text
+    assert "*Duração no Nagstamon:*" in text
     assert "0d 2h 15m" in text
-    assert "*Started:*" in text
-    assert "13/08/2026 07:00:00" in text
+    assert "*Horário do envio:*" in text
+    assert "09:00:00" in text
+    assert "*Início do alarme:*" in text
+    assert "07:00:00 (13/08/2026)" in text
     assert "*Status information:*" in text
     assert "filesystem /var is 95 percent full" in text
+    assert "*Criticidade SLA:*" in text
+    assert "*Tempo decorrido (SLA):*" in text
+    assert "*ID do Incidente (SLA):*" in text
     assert any(
         getattr(record, "semantic", {}).get("event") == POLL_SINK_PUBLISHED
         for record in caplog.records

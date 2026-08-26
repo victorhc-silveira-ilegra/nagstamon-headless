@@ -94,6 +94,7 @@ def test_alertmanager_parses_payload() -> None:
                 "alertname": "DiskFull",
                 "severity": "critical",
                 "application": "db01",
+                "environment": "prd",
             },
             "annotations": {"title": "disk is full"},
             "startsAt": "2026-08-13T10:00:00Z",
@@ -119,6 +120,7 @@ def test_alertmanager_parses_payload() -> None:
     assert alerts[0].alertname == "DiskFull"
     assert alerts[0].app == "db01"
     assert alerts[0].host == "db01"
+    assert alerts[0].environment == "PRD"
     assert alerts[0].status_text == "disk is full"
     assert alerts[0].severity.value == "CRITICAL"
     assert alerts[0].silenced_by == ("s1",)

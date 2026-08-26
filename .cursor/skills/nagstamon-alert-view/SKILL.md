@@ -13,16 +13,21 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 *[2026-08-14 14:00:00 -0300]*  *1 alerta efetivo*
 
 *#1  CRITICAL*
-*Client:*             core
-*Host:*               db01.prod
-*Service:*            DiskFull
-*Status:*             CRITICAL
-*Duration:*           0d 2h 15m
-*Started:*            14/08/2026 11:45:00
-*Status information:* filesystem /var is 95 percent full
+*Status:*                CRITICAL
+*Client:*                core
+*Host:*                  db01.prod
+*Service:*               DiskFull
+*Ambiente:*              PRD
+*Duração no Nagstamon:*  0d 2h 15m
+*Horário do envio:*      14:00:00
+*Início do alarme:*      11:45:00 (14/08/2026)
+*Status information:*    filesystem /var is 95 percent full
+*Criticidade SLA:*       Muito Crítico (Carência: 10m)
+*Tempo decorrido (SLA):* 8100s (135m 0s)
+*ID do Incidente (SLA):* core/DiskFull/db01.prod
 ```
 
-Stdout e Google Chat usam o **mesmo** texto plano (`text` do webhook, sem card JSON e sem fence monoespaçado). Labels em `*negrito*` e colunas com NBSP. Valores alinhados apos o label mais longo (`Status information:`).
+Stdout e Google Chat usam o **mesmo** texto plano (`text` do webhook, sem card JSON e sem fence monoespaçado). Labels em `*negrito*` e colunas com NBSP. Valores alinhados apos o label mais longo (`Tempo decorrido (SLA):`).
 
 Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert])` — cabecalho `1 alerta efetivo`, bloco `#1`, um POST no Google Chat com o mesmo texto. Com dedup off: um publish da lista efetiva (plural `N alertas efetivos` se N>1). Zero alertas = so o cabecalho.
 

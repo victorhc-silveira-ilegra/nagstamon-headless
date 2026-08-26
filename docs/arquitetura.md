@@ -40,7 +40,7 @@ Port           Port            Port        LedgerPort      Port
 | `entities/severity.py` | Severidade normalizada |
 | `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, Kubernetes, silenced/inhibited) |
 | `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
-| `services/alert_view.py` | Snapshot texto: Client, Host, Service, Status, Duration, Started, Status information |
+| `services/alert_view.py` | Snapshot texto enriquecido: Status, Client, Host, Service, Ambiente, Duração no Nagstamon, Horário do envio, Início do alarme, Status information e métricas SLA/SLO (Criticidade SLA, Tempo decorrido, ID do Incidente) |
 
 O dominio **nao** loga e **nao** conhece httpx nem `.env`.
 

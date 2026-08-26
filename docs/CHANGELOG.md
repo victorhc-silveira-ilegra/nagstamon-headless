@@ -18,6 +18,7 @@
 
 ## Unreleased
 
+- Snapshot enriquecido para Webhook e Logs: exibição dos campos Status, Client, Host, Service, Ambiente, Duração no Nagstamon, Horário do envio (HH:MM:SS), Início do alarme (HH:MM:SS), Status information e dados essenciais de SLA/SLO (Criticidade SLA/Hold, Tempo decorrido em segundos/minutos e ID do Incidente).
 - Suporte ao turno da manha: configuracao `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (default true se `WINDOW_START < 12:00`), permitindo que alertas ativos iniciados na madrugada ou antes do boot sejam despachados no primeiro snapshot sem necessidade de conferencia manual.
 - Deduplicacao por problema: `Alert.dedup_key()` remove `desc`/metricas dinamicas (`server`/`alertname`/`app`/`host`), garantindo emissao unica por problema mesmo com variacao de uso de memoria, latencia ou duracao.
 - Janela comercial respeita `WINDOW_ENABLED` (default `true`; `false` ignora horario e dias uteis).

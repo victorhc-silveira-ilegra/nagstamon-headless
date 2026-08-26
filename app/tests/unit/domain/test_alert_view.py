@@ -10,10 +10,17 @@ from domain.services.alert_view import (
     LABEL_WIDTH,
     MISSING,
     NBSP,
+    detect_environment,
+    format_alarm_start,
+    format_clock_time,
     format_duration,
     format_started,
     host_value,
     render_effective_alerts,
+    sla_criticality,
+    sla_elapsed,
+    sla_incident_id,
+    started_instant,
     status_information,
 )
 
@@ -134,13 +141,18 @@ def test_render_card_fields_and_wrap() -> None:
         FETCHED,
         DISPLAY_TIMEZONE,
     )
+    assert _row("Status", "CRITICAL") in text
     assert _row("Client", "core") in text
     assert _row("Host", "db01.prod") in text
     assert _row("Service", "DiskFull") in text
-    assert _row("Status", "CRITICAL") in text
-    assert _row("Duration", "--") in text
-    assert _row("Started", "--") in text
+    assert _row("Ambiente", "PRD") in text
+    assert _row("Duração no Nagstamon", "--") in text
+    assert _row("Horário do envio", "14:00:00") in text
+    assert _row("Início do alarme", "--") in text
     assert _row("Status information", "inode usage high") in text
+    assert _row("Criticidade SLA", "Muito Crítico (Carência: 10m)") in text
+    assert _row("Tempo decorrido (SLA)", "--") in text
+    assert _row("ID do Incidente (SLA)", "core/DiskFull/db01.prod") in text
     assert f"\n{NBSP * (LABEL_WIDTH + 3)}" in text
     client = next(line for line in text.splitlines() if line.startswith("*Client:*"))
     info = next(
@@ -170,8 +182,8 @@ def test_render_started_duration_and_sort() -> None:
     info_at = text.index("*#3  INFO*")
     assert critical_at < warning_at < info_at
     assert "3 alertas efetivos" in text
-    assert _row("Duration", "0d 2h 15m") in text
-    assert _row("Started", "14/08/2026 16:30:00") in text
+    assert _row("Duração no Nagstamon", "0d 2h 15m") in text
+    assert _row("Início do alarme", "14:45:00 (14/08/2026)") in text
 
 
 def test_render_cgi_started_from_duration() -> None:
@@ -180,19 +192,20 @@ def test_render_cgi_started_from_duration() -> None:
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert _row("Duration", "0d 2h 15m 3s") in text
-    assert _row("Started", "14/08/2026 11:44:57") in text
+    assert _row("Duração no Nagstamon", "0d 2h 15m 3s") in text
+    assert _row("Início do alarme", "11:44:57 (14/08/2026)") in text
 
 
 def test_render_default_timezone_and_placeholders() -> None:
     naive = datetime(2026, 8, 14, 17, 0, 0)
     text = render_effective_alerts(
-        [_alert(alertname="NagiosAlert", host="", app="CGI Service")],
+        [_alert(alertname="NagiosAlert", host="", app="CGI Service", server="svr")],
         naive,
     )
     assert "-0300" in text
     assert _row("Host", "--") in text
     assert _row("Service", "--") in text
+    assert _row("Ambiente", "--") in text
 
 
 def test_render_escapes_chat_markup_in_values() -> None:
@@ -202,3 +215,77 @@ def test_render_escapes_chat_markup_in_values() -> None:
         DISPLAY_TIMEZONE,
     )
     assert "disk \\*full\\* \\_now\\_" in text
+
+
+def test_detect_environment_sources() -> None:
+    assert detect_environment(_alert(environment="hml")) == "HML"
+    assert detect_environment(_alert(environment="prod")) == "PRD"
+    assert detect_environment(_alert(server="inbursa-hml-mp", host="h1")) == "HML"
+    assert detect_environment(_alert(server="s1", host="server-qa-01")) == "QA"
+    assert detect_environment(_alert(server="s1", host="", app="app-dev")) == "DEV"
+    assert detect_environment(_alert(server="s1", host="h1", app="a1")) == MISSING
+
+
+def test_sla_helpers_and_timing() -> None:
+    fast = _alert(alertname="DOWN", severity=Severity("critical"), desc="down")
+    critical = _alert(
+        alertname="HttpError",
+        severity=Severity("critical"),
+        desc="500 error",
+        status_text="500 error",
+    )
+    low = _alert(
+        alertname="Memory",
+        severity=Severity("warning"),
+        desc="high memory",
+        status_text="high memory",
+    )
+    info = _alert(severity=Severity("info"))
+    assert sla_criticality(fast) == "Muito Crítico (Carência: 10m)"
+    assert sla_criticality(critical) == "Crítico (Carência: 15m)"
+    assert sla_criticality(low) == "Baixo (Carência: 20m)"
+    assert sla_criticality(info) == MISSING
+    assert sla_incident_id(fast) == "core/DOWN/db01.prod"
+    start = FETCHED - timedelta(minutes=10, seconds=15)
+    assert (
+        sla_elapsed(
+            starts_at=start,
+            duration_str="",
+            fetched_at=FETCHED,
+        )
+        == "615s (10m 15s)"
+    )
+    assert (
+        sla_elapsed(
+            starts_at=None,
+            duration_str="",
+            fetched_at=FETCHED,
+        )
+        == MISSING
+    )
+    assert (
+        sla_elapsed(
+            starts_at=FETCHED + timedelta(seconds=10),
+            duration_str="",
+            fetched_at=FETCHED,
+        )
+        == MISSING
+    )
+    assert format_clock_time(FETCHED, DISPLAY_TIMEZONE) == "14:00:00"
+    assert (
+        format_alarm_start(
+            starts_at=None,
+            duration_str="",
+            fetched_at=FETCHED,
+            timezone=DISPLAY_TIMEZONE,
+        )
+        == MISSING
+    )
+    assert (
+        started_instant(
+            starts_at=None,
+            duration_str="",
+            fetched_at=FETCHED,
+        )
+        is None
+    )

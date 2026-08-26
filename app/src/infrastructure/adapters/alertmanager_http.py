@@ -67,6 +67,13 @@ def _to_alert(server: MonitorServer, item: dict[str, Any]) -> Alert:
         or annotations.get("title")
         or desc
     )
+    environment = str(
+        labels.get("environment")
+        or labels.get("env")
+        or labels.get("stage")
+        or labels.get("ambiente")
+        or ""
+    )
     return Alert(
         server=server.name,
         severity=Severity(severity_raw),
@@ -79,6 +86,7 @@ def _to_alert(server: MonitorServer, item: dict[str, Any]) -> Alert:
         silenced_by=_as_tuple(status.get("silencedBy")),
         inhibited_by=_as_tuple(status.get("inhibitedBy")),
         host=host,
+        environment=environment,
     )
 
 

@@ -55,7 +55,7 @@ Ports sao `typing.Protocol` (sem ABC).
 - Kubernetes (`kubelet`, `kubernetes`, `k8s`, `kube` em alertname/desc/status; `pod` no alertname)
 - states suppressed/pending/unprocessed e silenced/inhibited
 
-`AlertView` (`domain/services/alert_view.py`): snapshot operacional em texto (CRITICAL primeiro). Labels em `*negrito*` (markdown do Chat) e colunas com NBSP. Campos: Client (`server`), Host (`host` ou `app`), Service (`alertname`), Status (`severity`), Duration (`duration_str` ou `starts_at`), Started (`starts_at` no fuso, `DD/MM/YYYY HH:MM:SS`), Status information (`status_text` ou `desc`). Placeholder `N/A` / vazio vira `--`. Google Chat recebe o mesmo texto como mensagem (`{"text": ...}`), sem card estruturado e sem fence monoespaçado.
+`AlertView` (`domain/services/alert_view.py`): snapshot operacional em texto (CRITICAL primeiro). Labels em `*negrito*` (markdown do Chat) e colunas com NBSP. Campos: Status (`severity`), Client (`server`), Host (`host` ou `app`), Service (`alertname`), Ambiente (`environment` ou inferido), Duração no Nagstamon (`duration_str` ou `starts_at`), Horário do envio (`HH:MM:SS`), Início do alarme (`HH:MM:SS (DD/MM/YYYY)`), Status information (`status_text` ou `desc`), Criticidade SLA (Carência 10m/15m/20m), Tempo decorrido (SLA) (`segundos (minutos)`), ID do Incidente (SLA) (`server/service/host`). Placeholder `N/A` / vazio vira `--`. Google Chat e logs diários recebem o mesmo texto formatado, sem card estruturado e sem fence monoespaçado.
 
 ## Qualidade
 

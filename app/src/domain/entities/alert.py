@@ -22,6 +22,7 @@ class Alert:
     inhibited_by: tuple[str, ...] = ()
     acknowledged: bool = False
     host: str = ""
+    environment: str = ""
 
     def __post_init__(self) -> None:
         server = self.server.strip()
@@ -41,6 +42,7 @@ class Alert:
         object.__setattr__(self, "duration_str", self.duration_str.strip())
         object.__setattr__(self, "alert_state", self.alert_state.strip().lower())
         object.__setattr__(self, "host", self.host.strip())
+        object.__setattr__(self, "environment", self.environment.strip().upper())
 
     def dedup_key(self) -> str:
         return f"{self.server}\0{self.alertname}\0{self.app}\0{self.host}"
