@@ -47,7 +47,7 @@ def format_started_clock(instant: datetime, timezone: ZoneInfo) -> str:
 
 
 def format_clock_time(instant: datetime, timezone: ZoneInfo) -> str:
-    return _aware(instant).astimezone(timezone).strftime("%H:%M:%S")
+    return _aware(instant).astimezone(timezone).strftime("%H:%M:%S (%d/%m/%Y)")
 
 
 def started_instant(
@@ -272,15 +272,11 @@ def render_effective_alerts(
     fetched_at: datetime,
     timezone: ZoneInfo | None = None,
 ) -> str:
+    if not alerts:
+        return ""
     zone = timezone or DISPLAY_TIMEZONE
-    count = len(alerts)
-    noun = "alerta efetivo" if count == 1 else "alertas efetivos"
-    stamp = format_timestamp(fetched_at, zone)
-    header = f"*[{stamp}]*  *{count} {noun}*"
-    if count == 0:
-        return header
     cards = [
         render_alert_card(alert, fetched_at, zone, index)
         for index, alert in enumerate(sorted(alerts, key=_sort_key), start=1)
     ]
-    return header + "\n\n" + "\n\n".join(cards)
+    return "\n\n".join(cards)

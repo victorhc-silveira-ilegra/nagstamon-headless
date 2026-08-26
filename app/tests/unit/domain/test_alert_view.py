@@ -15,6 +15,7 @@ from domain.services.alert_view import (
     format_clock_time,
     format_duration,
     format_started,
+    format_timestamp,
     host_value,
     render_effective_alerts,
     sla_criticality,
@@ -126,12 +127,10 @@ def test_status_information_falls_back_to_desc() -> None:
 
 def test_render_empty_and_singular() -> None:
     empty = render_effective_alerts([], FETCHED, DISPLAY_TIMEZONE)
-    assert empty.startswith("*[2026-08-14 14:00:00 -0300]*")
-    assert "0 alertas efetivos" in empty
-    assert "#" not in empty
+    assert empty == ""
     one = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
-    assert "1 alerta efetivo" in one
-    assert "*#1  CRITICAL*" in one
+    assert one.startswith("*#1  CRITICAL*")
+    assert "alerta efetivo" not in one
 
 
 def test_render_card_fields_and_wrap() -> None:
@@ -147,7 +146,7 @@ def test_render_card_fields_and_wrap() -> None:
     assert _row("Service", "DiskFull") in text
     assert _row("Ambiente", "PRD") in text
     assert _row("Duração no Nagstamon", "--") in text
-    assert _row("Horário do envio", "14:00:00") in text
+    assert _row("Horário do envio", "14:00:00 (14/08/2026)") in text
     assert _row("Início do alarme", "--") in text
     assert _row("Status information", "inode usage high") in text
     assert _row("Criticidade SLA", "Muito Crítico (Carência: 10m)") in text
@@ -181,7 +180,6 @@ def test_render_started_duration_and_sort() -> None:
     warning_at = text.index("*#2  WARNING*")
     info_at = text.index("*#3  INFO*")
     assert critical_at < warning_at < info_at
-    assert "3 alertas efetivos" in text
     assert _row("Duração no Nagstamon", "0d 2h 15m") in text
     assert _row("Início do alarme", "14:45:00 (14/08/2026)") in text
 
@@ -202,7 +200,7 @@ def test_render_default_timezone_and_placeholders() -> None:
         [_alert(alertname="NagiosAlert", host="", app="CGI Service", server="svr")],
         naive,
     )
-    assert "-0300" in text
+    assert text.startswith("*#1  CRITICAL*")
     assert _row("Host", "--") in text
     assert _row("Service", "--") in text
     assert _row("Ambiente", "--") in text
@@ -271,7 +269,8 @@ def test_sla_helpers_and_timing() -> None:
         )
         == MISSING
     )
-    assert format_clock_time(FETCHED, DISPLAY_TIMEZONE) == "14:00:00"
+    assert format_clock_time(FETCHED, DISPLAY_TIMEZONE) == "14:00:00 (14/08/2026)"
+    assert format_timestamp(FETCHED, DISPLAY_TIMEZONE).endswith("-0300")
     assert (
         format_alarm_start(
             starts_at=None,

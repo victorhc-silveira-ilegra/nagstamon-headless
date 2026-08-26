@@ -24,11 +24,13 @@ class StdoutAlertSink:
         self._timezone = timezone or DISPLAY_TIMEZONE
 
     def publish(self, alerts: Sequence[Alert], *, fetched_at: datetime) -> None:
-        print(
-            render_effective_alerts(alerts, fetched_at, self._timezone),
-            file=self._stream,
-            flush=True,
-        )
+        text = render_effective_alerts(alerts, fetched_at, self._timezone)
+        if text:
+            print(
+                text,
+                file=self._stream,
+                flush=True,
+            )
         log_event(
             logger,
             logging.INFO,

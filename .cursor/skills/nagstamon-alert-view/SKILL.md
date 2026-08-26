@@ -10,8 +10,6 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 ## Layout
 
 ```text
-*[2026-08-14 14:00:00 -0300]*  *1 alerta efetivo*
-
 *#1  CRITICAL*
 *Status:*                CRITICAL
 *Client:*                core
@@ -19,7 +17,7 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 *Service:*               DiskFull
 *Ambiente:*              PRD
 *Duração no Nagstamon:*  0d 2h 15m
-*Horário do envio:*      14:00:00
+*Horário do envio:*      14:00:00 (14/08/2026)
 *Início do alarme:*      11:45:00 (14/08/2026)
 *Status information:*    filesystem /var is 95 percent full
 *Criticidade SLA:*       Muito Crítico (Carência: 10m)

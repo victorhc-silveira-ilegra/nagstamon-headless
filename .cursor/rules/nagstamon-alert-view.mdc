@@ -15,7 +15,7 @@ Campos e fontes:
 - Service = `alertname`
 - Ambiente = `environment` ou detectado do server/host/app (`PRD`, `HML`, `QA`, `DEV`, `SANDBOX`, etc.)
 - Duração no Nagstamon = `duration_str` (espacos colapsados) ou `starts_at` ate `fetched_at` (`0d 2h 15m`)
-- Horário do envio = instante do disparo no fuso `HH:MM:SS`
+- Horário do envio = instante do disparo no fuso `HH:MM:SS (DD/MM/YYYY)`
 - Início do alarme = instante de início do alarme no fuso `HH:MM:SS (DD/MM/YYYY)`
 - Status information = `status_text` ou `desc`
 - Criticidade SLA = Carência do hold (`Muito Crítico: 10m`, `Crítico: 15m`, `Baixo: 20m`)

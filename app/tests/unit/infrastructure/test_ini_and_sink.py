@@ -162,7 +162,7 @@ def test_stdout_sink_prints_alerts(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level("INFO"):
         sink.publish([alert], fetched_at=fetched_at)
     text = stream.getvalue()
-    assert "1 alerta efetivo" in text
+    assert "*#1  CRITICAL*" in text
     assert "*Status:*" in text
     assert "CRITICAL" in text
     assert "*Client:*" in text
@@ -176,7 +176,7 @@ def test_stdout_sink_prints_alerts(caplog: pytest.LogCaptureFixture) -> None:
     assert "*Duração no Nagstamon:*" in text
     assert "0d 2h 15m" in text
     assert "*Horário do envio:*" in text
-    assert "09:00:00" in text
+    assert "09:00:00 (13/08/2026)" in text
     assert "*Início do alarme:*" in text
     assert "07:00:00 (13/08/2026)" in text
     assert "*Status information:*" in text
@@ -201,4 +201,4 @@ def test_stdout_sink_default_stream(monkeypatch: pytest.MonkeyPatch) -> None:
         [],
         fetched_at=datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC),
     )
-    assert "0 alertas efetivos" in captured.getvalue()
+    assert captured.getvalue() == ""
