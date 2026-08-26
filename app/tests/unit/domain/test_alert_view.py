@@ -129,7 +129,7 @@ def test_render_empty_and_singular() -> None:
     empty = render_effective_alerts([], FETCHED, DISPLAY_TIMEZONE)
     assert empty == ""
     one = render_effective_alerts([_alert()], FETCHED, DISPLAY_TIMEZONE)
-    assert one.startswith("*#1  CRITICAL*")
+    assert one.startswith("*Status:*")
     assert "alerta efetivo" not in one
 
 
@@ -176,9 +176,9 @@ def test_render_started_duration_and_sort() -> None:
         FETCHED,
         ZoneInfo("UTC"),
     )
-    critical_at = text.index("*#1  CRITICAL*")
-    warning_at = text.index("*#2  WARNING*")
-    info_at = text.index("*#3  INFO*")
+    critical_at = text.index(_row("Status", "CRITICAL"))
+    warning_at = text.index(_row("Status", "WARNING"))
+    info_at = text.index(_row("Status", "INFO"))
     assert critical_at < warning_at < info_at
     assert _row("Duração no Nagstamon", "0d 2h 15m") in text
     assert _row("Início do alarme", "14:45:00 (14/08/2026)") in text
@@ -200,7 +200,7 @@ def test_render_default_timezone_and_placeholders() -> None:
         [_alert(alertname="NagiosAlert", host="", app="CGI Service", server="svr")],
         naive,
     )
-    assert text.startswith("*#1  CRITICAL*")
+    assert text.startswith(_row("Status", "CRITICAL"))
     assert _row("Host", "--") in text
     assert _row("Service", "--") in text
     assert _row("Ambiente", "--") in text

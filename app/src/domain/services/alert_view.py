@@ -227,7 +227,6 @@ def render_alert_card(
     alert: Alert,
     fetched_at: datetime,
     timezone: ZoneInfo,
-    index: int,
 ) -> str:
     duration = format_duration(
         duration_str=alert.duration_str,
@@ -243,7 +242,6 @@ def render_alert_card(
     )
     return "\n".join(
         [
-            f"*#{index}  {alert.severity.value}*",
             _labeled("Status", alert.severity.value),
             _labeled("Client", display_value(alert.server)),
             _labeled("Host", host_value(alert)),
@@ -276,7 +274,7 @@ def render_effective_alerts(
         return ""
     zone = timezone or DISPLAY_TIMEZONE
     cards = [
-        render_alert_card(alert, fetched_at, zone, index)
-        for index, alert in enumerate(sorted(alerts, key=_sort_key), start=1)
+        render_alert_card(alert, fetched_at, zone)
+        for alert in sorted(alerts, key=_sort_key)
     ]
     return "\n\n".join(cards)

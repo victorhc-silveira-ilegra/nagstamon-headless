@@ -162,7 +162,8 @@ def test_stdout_sink_prints_alerts(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level("INFO"):
         sink.publish([alert], fetched_at=fetched_at)
     text = stream.getvalue()
-    assert "*#1  CRITICAL*" in text
+    assert text.startswith("*Status:*")
+    assert "*#1" not in text
     assert "*Status:*" in text
     assert "CRITICAL" in text
     assert "*Client:*" in text

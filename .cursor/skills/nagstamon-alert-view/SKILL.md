@@ -10,7 +10,6 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 ## Layout
 
 ```text
-*#1  CRITICAL*
 *Status:*                CRITICAL
 *Client:*                core
 *Host:*                  db01.prod
@@ -27,7 +26,7 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 
 Stdout e Google Chat usam o **mesmo** texto plano (`text` do webhook, sem card JSON e sem fence monoespaçado). Labels em `*negrito*` e colunas com NBSP. Valores alinhados apos o label mais longo (`Tempo decorrido (SLA):`).
 
-Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert])` — cabecalho `1 alerta efetivo`, bloco `#1`, um POST no Google Chat com o mesmo texto. Com dedup off: um publish da lista efetiva (plural `N alertas efetivos` se N>1). Zero alertas = so o cabecalho.
+Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert])`, um POST no Google Chat com o mesmo texto formatado. Zero alertas = sem saída no sink.
 
 ## Regras
 
