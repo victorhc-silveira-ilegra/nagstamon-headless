@@ -19,7 +19,7 @@ Campos e fontes:
 - Início do alarme = instante de início do alarme no fuso `HH:MM:SS (DD/MM/YYYY)`
 - Status information = `status_text` ou `desc`
 - Criticidade SLA = Carência do hold (`Muito Crítico: 10m`, `Crítico: 15m`, `Baixo: 20m`)
-- Tempo decorrido (SLA) = segundos totais e minutos decorridos
+- Tempo decorrido (SLA) = minutos decorridos desde o início do alarme (ex.: 55m)
 - ID do Incidente (SLA) = chave unívoca do incidente (`server/alertname/host`)
 
 Placeholder (`N/A`, `NagiosAlert`, `CGI Service`, vazio) vira `--`. CRITICAL antes de WARNING. Informacao longa quebra na coluna. Labels em `*negrito*` (Chat); colunas com NBSP (gutter ate `Tempo decorrido (SLA):` + 1 NBSP). Dominio nao loga. Webhook do Chat = mensagem de texto (`{"text": ...}`), sem cards estruturados e sem fence monoespaçado.

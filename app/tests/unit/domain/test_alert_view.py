@@ -251,7 +251,7 @@ def test_sla_helpers_and_timing() -> None:
             duration_str="",
             fetched_at=FETCHED,
         )
-        == "615s (10m 15s)"
+        == "10m"
     )
     assert (
         sla_elapsed(

@@ -162,8 +162,7 @@ def sla_elapsed(
     if seconds < 0:
         return MISSING
     minutes = seconds // 60
-    rem = seconds % 60
-    return f"{seconds}s ({minutes}m {rem}s)"
+    return f"{minutes}m"
 
 
 def sla_incident_id(alert: Alert) -> str:

@@ -20,7 +20,7 @@ A saida operacional (sink, nao log) e o produto. Logs nao repetem payload.
 *Início do alarme:*      11:45:00 (14/08/2026)
 *Status information:*    filesystem /var is 95 percent full
 *Criticidade SLA:*       Muito Crítico (Carência: 10m)
-*Tempo decorrido (SLA):* 8100s (135m 0s)
+*Tempo decorrido (SLA):* 135m
 *ID do Incidente (SLA):* core/DiskFull/db01.prod
 ```
 
