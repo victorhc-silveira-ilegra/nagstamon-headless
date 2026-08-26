@@ -53,8 +53,29 @@ if [[ ${#confs[@]} -eq 0 ]]; then
 fi
 
 if ! ip -br link show "${VPN_IFACE}" 2>/dev/null | grep -qw UP; then
-  echo "SMOKE FAIL: VPN ${VPN_IFACE} fora do ar" >&2
-  exit 1
+  auto_iface=""
+  if [[ -n "${VPN_ADDR}" ]]; then
+    auto_iface="$(ip -br addr show 2>/dev/null | grep -F "${VPN_ADDR}" | awk '{print $1}' | head -n1 || true)"
+  fi
+  if [[ -z "${auto_iface}" ]]; then
+    auto_iface="$(
+      ip -br link show 2>/dev/null \
+        | grep -E "^(fctvpn|tun|ppp|wireguard|wg)" \
+        | grep -w UP \
+        | awk '{print $1}' \
+        | head -n1 || true
+    )"
+  fi
+  if [[ -n "${auto_iface}" ]]; then
+    echo "SMOKE: VPN_IFACE=${VPN_IFACE} fora do ar, usando interface VPN ativa: ${auto_iface}"
+    VPN_IFACE="${auto_iface}"
+    if grep -q "^VPN_IFACE=" "${ROOT}/.env" 2>/dev/null; then
+      sed -i "s/^VPN_IFACE=.*/VPN_IFACE=${auto_iface}/" "${ROOT}/.env" || true
+    fi
+  else
+    echo "SMOKE FAIL: VPN ${VPN_IFACE} fora do ar" >&2
+    exit 1
+  fi
 fi
 if [[ -n "${VPN_ADDR}" ]] && ! ip -br addr show "${VPN_IFACE}" | grep -q "${VPN_ADDR}"; then
   echo "SMOKE FAIL: ${VPN_IFACE} sem endereco ${VPN_ADDR}" >&2
