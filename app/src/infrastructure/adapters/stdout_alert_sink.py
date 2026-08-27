@@ -27,7 +27,7 @@ class StdoutAlertSink:
         text = render_effective_alerts(alerts, fetched_at, self._timezone)
         if text:
             print(
-                text,
+                f"\n{text}\n",
                 file=self._stream,
                 flush=True,
             )
