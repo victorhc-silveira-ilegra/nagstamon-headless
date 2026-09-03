@@ -50,6 +50,7 @@ def test_monitor_server_validation_and_alertmanager_detection() -> None:
     assert server.password == "secret"
     assert server.server_type == "prometheus-alertmanager"
     assert server.is_alertmanager is True
+    assert server.enabled is True
     named = MonitorServer(
         name="alertmanager-prod",
         url="http://am.example",
@@ -66,8 +67,10 @@ def test_monitor_server_validation_and_alertmanager_detection() -> None:
         username="",
         password="",
         server_type="nagios",
+        enabled=False,
     )
     assert nagios.is_alertmanager is False
+    assert nagios.enabled is False
     with pytest.raises(DomainValidationError, match="name"):
         MonitorServer(
             name=" ",

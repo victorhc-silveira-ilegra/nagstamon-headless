@@ -1,0 +1,34 @@
+name: CI - Scripts
+description: Matriz crash-first bash/Makefile via orquestrador
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: app/.python-version
+        cache: pip
+        cache-dependency-path: |
+          app/requirements.txt
+          app/requirements-dev.txt
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r app/requirements.txt -r app/requirements-dev.txt
+    - name: Scripts | Lint
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area scripts --stage lint
+    - name: Scripts | Seguranca
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area scripts --stage security
+    - name: Scripts | Testes
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area scripts --stage test
+    - name: Scripts | Validate
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area scripts --stage validate
+    - name: Scripts | Build
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area scripts --stage build

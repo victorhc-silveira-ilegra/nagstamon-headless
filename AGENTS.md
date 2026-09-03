@@ -5,7 +5,7 @@ Projeto: Nagstamon Headless (DDD / Hexagonal) — polling de Alertmanager e Nagi
 ## Prioridades
 
 1. Preservar camadas em `app/src` (`domain`, `application`, `infrastructure`, `presentation`).
-2. Usar `make app-lint|app-test|app-security` (via `clean_workspace.py`) apos mudancas. CI em `.github/workflows/ci.yml`.
+2. Usar `make app-lint|app-test|app-security` (via `clean_workspace.py --area python`) apos mudancas. CI matriz em `.github/workflows/ci.yml` ([docs/devops.md](docs/devops.md)).
 3. Nao escrever comentarios no codigo.
 4. Manter cobertura 100% e Conventional Commits.
 5. Config via `.env` na raiz (`SERVERS_DIR`, `PROXY_ADDR`, `VPN_*`, `REFRESH_INTERVAL_SECONDS`, `HTTP_*`, `DEDUP_*`, `WINDOW_*`, `FILTER_HOLD_*`, `SOUND_*`, `GCHAT_*`, `LOG_*`). Proxy/VPN reais e webhook do Chat so no `.env` local.
@@ -20,6 +20,7 @@ Projeto: Nagstamon Headless (DDD / Hexagonal) — polling de Alertmanager e Nagi
 make app-install
 make app-lint
 make app-test
+make app-ping
 make docker-up
 make docker-smoke
 ```
@@ -35,6 +36,7 @@ make docker-smoke
 - [docs/engineering-logging.md](docs/engineering-logging.md)
 - [docs/structure.md](docs/structure.md)
 - [docs/infra-docker.md](docs/infra-docker.md)
+- [docs/devops.md](docs/devops.md)
 
 ## Fora de escopo
 

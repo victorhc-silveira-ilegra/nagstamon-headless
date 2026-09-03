@@ -35,7 +35,7 @@ Port           Port            Port        LedgerPort      Port
 
 | Modulo | Papel |
 |--------|--------|
-| `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo |
+| `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo, `enabled` |
 | `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` do problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico nem `starts_at`) |
 | `entities/severity.py` | Severidade normalizada |
 | `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, Kubernetes, silenced/inhibited) |
@@ -48,15 +48,17 @@ O dominio **nao** loga e **nao** conhece httpx nem `.env`.
 
 | Modulo | Papel |
 |--------|--------|
-| `ports/server_config.py` | `list_enabled()` |
+| `ports/server_config.py` | `list_enabled()` / `list_all()` / `set_enabled(name, enabled)` |
 | `ports/monitor_client.py` | `fetch_all(servers)` |
+| `ports/monitor_probe.py` | `probe(server) -> bool` (HTTP 2xx) |
 | `ports/alert_sink.py` | `publish(alerts, fetched_at=...)` (stdout e Google Chat) |
 | `ports/clock.py` | Relogio injetavel |
 | `ports/alert_dispatch_ledger.py` | `try_claim` / `confirm` / `release` (dedup persistente) |
 | `ports/alert_sound.py` | `play_new_alert()` apos publish de alerta claimed |
 | `use_cases/poll_monitors.py` | Um ciclo: fetch → filtro → unique → claim/publish/confirm por alerta → som |
+| `use_cases/ping_monitors.py` | One-shot: `list_all` → probe paralelo → `set_enabled` conforme 2xx |
 
-O use case **nao** loga. Paralelismo HTTP fica no adapter composto.
+O use case **nao** loga. Paralelismo HTTP fica no adapter composto (poll) ou no use case de ping.
 
 ### Infrastructure (`app/src/infrastructure`)
 
@@ -64,9 +66,10 @@ O use case **nao** loga. Paralelismo HTTP fica no adapter composto.
 |--------|--------|
 | `config/settings.py` | `Settings.from_env()` |
 | `config/dotenv_loader.py` | Carrega `.env` da raiz |
-| `adapters/ini_server_config.py` | Parser INI estilo Nagstamon; desofusca username/password |
+| `adapters/ini_server_config.py` | Parser INI estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled` (so a linha `enabled=`); desofusca username/password |
 | `adapters/alertmanager_http.py` | GET `/api/v2/alerts` via httpx |
 | `adapters/nagios_cgi_http.py` | GET CGI HTML (tabelas aninhadas); host/service/duracao/ack |
+| `adapters/http_monitor_probe.py` | Probe HTTP autenticado (AM/Nagios); tipos fora de escopo = False |
 | `adapters/composite_monitor_client.py` | Roteia AM vs Nagios em ThreadPoolExecutor |
 | `adapters/stdout_alert_sink.py` | Snapshot de alertas efetivos no stdout (fuso injetado) |
 | `adapters/google_chat_http.py` | POST da mesma mensagem `text` no webhook; loga `poll.gchat.failed` e raises para o use case dar release |
@@ -88,9 +91,10 @@ Overlap de ciclo: `poll.cycle.skipped_in_flight` (WARNING).
 |--------|--------|
 | `worker/main.py` | Composition root + loop do daemon |
 | `worker/cycle_guard.py` | Trava in-flight: um ciclo por vez no processo |
+| `cli/ping.py` | Composition root one-shot: probe HTTP e grava `enabled` (`HOST_SERVERS_DIR` se existir) |
 | `logging/*` | Setup root logger (`text` / `json`), tee diario em `LOG_DIR`, silence httpx |
 
-CLI: `--max-cycles` (opcional; omitido = loop infinito).
+CLI do daemon: `--max-cycles` (opcional; omitido = loop infinito). Ping: `make app-ping` / `nagstamon-headless-ping` (sem args).
 
 ## Config
 

@@ -13,6 +13,7 @@ class MonitorServer:
     username: str
     password: str
     server_type: str
+    enabled: bool = True
 
     def __post_init__(self) -> None:
         name = self.name.strip()
@@ -27,6 +28,7 @@ class MonitorServer:
         object.__setattr__(self, "username", self.username.strip())
         object.__setattr__(self, "password", self.password)
         object.__setattr__(self, "server_type", self.server_type.strip().lower())
+        object.__setattr__(self, "enabled", bool(self.enabled))
 
     @property
     def is_alertmanager(self) -> bool:

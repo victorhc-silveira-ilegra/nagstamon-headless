@@ -35,6 +35,9 @@ A lista de alertas efetivos no stdout e o **sink do produto** (snapshot texto), 
 | `monitor.fetch.failed` | WARNING | adapters HTTP / composite (fail-open) |
 | `monitor.config.failed` | WARNING | `IniServerConfigAdapter` (fail-open) |
 | `monitor.config.empty` | WARNING | worker, uma vez se o primeiro ciclo tiver `servers_count=0` |
+| `monitor.ping.started` | INFO | `presentation/cli/ping` |
+| `monitor.ping.finished` | INFO | `presentation/cli/ping` (contagens reachable/unreachable/updated/unchanged) |
+| `monitor.ping.failed` | WARNING/ERROR | probe/set_enabled por servidor (WARNING); falha do execute (ERROR) |
 
 Caminho feliz com um alerta novo no primeiro ciclo (~4 INFO apos o boot): `started` → `sink.published` (`alerts_count=1`) → `gchat.published` (`alerts_count=1`) → `finished`. Com N claimed e ledger ligado: N pares `sink.published` / `gchat.published`, cada um com `alerts_count=1`.
 Ciclo ocioso depois do heartbeat: silencio (sem `started`/`finished`). Alerta novo depois do primeiro ciclo: `published` → `finished` (sem `started`).

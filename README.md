@@ -39,15 +39,17 @@ make docker-logs
 make app-clean
 ```
 
-O orquestrador unico e `app/scripts/operations/clean_workspace.py`. `make app-clean` apaga caches e logs em `logs/` que nao sejam do dia atual (`nagstamon-YYYY-MM-DD.log` e o arquivo vigente; o Docker grava nesse diretorio em tempo real).
+O orquestrador unico e `app/scripts/operations/clean_workspace.py` (`--area` / `--stage`). `make app-clean` apaga caches e logs em `logs/` que nao sejam do dia atual (`nagstamon-YYYY-MM-DD.log` e o arquivo vigente; o Docker grava nesse diretorio em tempo real).
 
 ## CI
 
+Documentacao completa: [`docs/devops.md`](docs/devops.md).
+
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 
-- jobs paralelos: lint, test, security (actions compostas)
+- jobs paralelos por area (Python / Docker / GitHub / Scripts), stages crash-first
 - job `release` (semantic-release) apos qualidade em `main`
-- tags sincronizadas via `.github/actions/sync-tags`
+- pre-commit espelha a mesma matriz (`fail_fast`, commitlint primeiro)
 - changelog em [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
 ## Documentacao
@@ -58,5 +60,6 @@ O orquestrador unico e `app/scripts/operations/clean_workspace.py`. `make app-cl
 - [docs/engineering-python.md](docs/engineering-python.md)
 - [docs/engineering-logging.md](docs/engineering-logging.md)
 - [docs/infra-docker.md](docs/infra-docker.md)
+- [docs/devops.md](docs/devops.md)
 - [AGENTS.md](AGENTS.md)
 - [prompt-model.md](prompt-model.md)

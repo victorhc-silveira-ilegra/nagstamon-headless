@@ -5,7 +5,7 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 ## Objetivos
 
 - Hexagonal / DDD com cobertura 100%
-- Composition root no worker
+- Composition root no worker (daemon) e em `presentation/cli/ping` (one-shot)
 - Logging semantico enxuto (ver [engineering-logging.md](engineering-logging.md))
 - Config centralizada no `.env` da raiz
 - Sem comentarios no codigo de aplicacao
@@ -25,8 +25,9 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 
 | Port | Adapter | Notas |
 |------|---------|--------|
-| `ServerConfigPort` | `IniServerConfigAdapter` | `*.conf` estilo Nagstamon; username/password desofuscados |
+| `ServerConfigPort` | `IniServerConfigAdapter` | `*.conf` estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled`; username/password desofuscados |
 | `MonitorClientPort` | `CompositeMonitorClient` | httpx; fail-open por servidor |
+| `MonitorProbePort` | `HttpMonitorProbeAdapter` | GET AM `/api/v2/alerts` ou Nagios CGI; 2xx = reachable; Zabbix/Icinga/Centreon/Checkmk = False |
 | `AlertSinkPort` | `StdoutAlertSink` + `GoogleChatWebhookSink` via `CompositeAlertSink` | mesmo snapshot texto no stdout e no webhook (`{"text": ...}`); Chat raises apos log para o ledger dar release |
 | `ClockPort` | `SystemClock` | UTC |
 | `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | `try_claim` / `confirm` / `release`; dedup por problema (`server`/`alertname`/`app`/`host`); arquivo com flock se `DEDUP_LEDGER_PATH` |
@@ -61,14 +62,14 @@ Ports sao `typing.Protocol` (sem ABC).
 
 | Comando | O que roda |
 |---------|------------|
-| `make app-lint` | Ruff, mypy strict, vulture, limite 300 linhas |
-| `make app-test` | pytest-xdist + coverage 100% (branch) |
-| `make app-security` | bandit + pip-audit |
-| `make app-pre-commit-run` | hooks em todos os arquivos (requer git) |
+| `make app-lint` | Python \| Lint (Ruff, mypy strict, vulture, limite 300 linhas) |
+| `make app-test` | Python \| Testes (pytest-xdist + coverage 100%) |
+| `make app-security` | Python \| Seguranca (bandit + pip-audit) |
+| `make app-pre-commit-run` | hooks em todos os arquivos (matriz CI, `fail_fast`; requer git) |
 
-CI (GitHub Actions): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — lint, test e security em paralelo; `release` com semantic-release em `main`.
+CI (GitHub Actions): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — matriz por area (Python/Docker/GitHub/Scripts) crash-first; `release` com semantic-release em `main`. Detalhes: [devops.md](devops.md).
 
-Orquestrador: `app/scripts/operations/clean_workspace.py`.
+Orquestrador: `app/scripts/operations/clean_workspace.py --area <area> --stage <stage>`.
 
 Convencoes:
 
@@ -103,4 +104,5 @@ Fakes/Mocks: fakes dos ports, `httpx.BaseTransport`, sleeper injetavel no worker
 
 - Local: `make app-run` / `python run.py`
 - Console script: `nagstamon-headless`
+- Ping: `make app-ping` / `nagstamon-headless-ping` (probe HTTP + grava `enabled`; usa `HOST_SERVERS_DIR` se o diretorio existir)
 - Docker: `make docker-up` (CMD `nagstamon-headless`); `make docker-smoke` (1 ciclo real via VPN/proxy e `*.conf`)

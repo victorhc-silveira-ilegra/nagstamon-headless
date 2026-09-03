@@ -60,9 +60,39 @@ def test_ini_reads_enabled_servers(tmp_path: Path) -> None:
     assert by_name["am"].username == "user"
     assert by_name["am"].password == "secret"
     assert by_name["am"].is_alertmanager is True
+    assert by_name["am"].enabled is True
     assert by_name["core"].url == "http://nagios.example"
     assert by_name["core"].proxy == "http://custom:3128"
     assert len(servers) == 2
+    all_servers = adapter.list_all()
+    all_by = {(item.name, item.url, item.enabled) for item in all_servers}
+    assert ("am", "http://am.example", True) in all_by
+    assert ("core", "http://skip.example", False) in all_by
+    assert ("core", "http://nagios.example", True) in all_by
+    assert len(all_servers) == 3
+
+
+def test_ini_set_enabled_preserves_other_lines(tmp_path: Path) -> None:
+    path = tmp_path / "server_am.conf"
+    path.write_text(
+        "[Server]\n"
+        "enabled=True\n"
+        "monitor_url=http://am.example\n"
+        "username=ENC_KEEP\n"
+        "password=ENC_SECRET\n",
+        encoding="utf-8",
+    )
+    adapter = IniServerConfigAdapter(tmp_path, default_proxy="")
+    adapter.set_enabled("am", False)
+    text = path.read_text(encoding="utf-8")
+    assert "enabled=False" in text
+    assert "username=ENC_KEEP" in text
+    assert "password=ENC_SECRET" in text
+    assert "enabled=True" not in text
+    adapter.set_enabled("am", False)
+    assert path.read_text(encoding="utf-8") == text
+    adapter.set_enabled("am", True)
+    assert "enabled=True" in path.read_text(encoding="utf-8")
 
 
 def test_ini_deobfuscates_nagstamon_secrets(tmp_path: Path) -> None:

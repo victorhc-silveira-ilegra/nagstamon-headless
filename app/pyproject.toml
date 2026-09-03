@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 nagstamon-headless = "presentation.worker.main:main"
+nagstamon-headless-ping = "presentation.cli.ping:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

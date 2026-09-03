@@ -1,0 +1,46 @@
+name: CI - GitHub
+description: Matriz crash-first GitHub Actions via orquestrador
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: app/.python-version
+        cache: pip
+        cache-dependency-path: |
+          app/requirements.txt
+          app/requirements-dev.txt
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r app/requirements.txt -r app/requirements-dev.txt
+    - name: Instalar actionlint
+      shell: bash
+      run: |
+        curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash
+        sudo mv actionlint /usr/local/bin/actionlint
+    - name: Instalar Gitleaks
+      shell: bash
+      run: |
+        GITLEAKS_VERSION="8.24.2"
+        curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
+        tar -xzf /tmp/gitleaks.tar.gz -C /tmp
+        sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+    - name: GitHub | Lint
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area github --stage lint
+    - name: GitHub | Seguranca
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area github --stage security
+    - name: GitHub | Testes
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area github --stage test
+    - name: GitHub | Validate
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area github --stage validate
+    - name: GitHub | Build
+      shell: bash
+      run: python app/scripts/operations/clean_workspace.py --area github --stage build

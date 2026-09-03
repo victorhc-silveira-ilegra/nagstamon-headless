@@ -8,7 +8,8 @@ services:
     restart: unless-stopped
     network_mode: host
     env_file:
-      - ../../.env
+      - path: ../../.env
+        required: false
     volumes:
       - ${HOST_SERVERS_DIR:-~/.nagstamon/servers}:/etc/nagstamon/servers:ro
       - ../../data:/var/lib/nagstamon-headless

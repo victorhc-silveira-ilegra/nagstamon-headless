@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* `make app-ping` / `nagstamon-headless-ping`: probe HTTP autenticado (Alertmanager e Nagios CGI) em todos os `*.conf` e grava `enabled=True/False`; usa `HOST_SERVERS_DIR` quando existir para gravar no host com volume Docker `:ro`
+* CI/CD matriz crash-first por area (Python/Docker/GitHub/Scripts), pre-commit alinhado com `fail_fast` e commitlint primeiro; documentacao em `docs/devops.md`
+
 ## [1.9.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.9.0...v1.9.1) (2026-08-26)
 
 ### Bug Fixes

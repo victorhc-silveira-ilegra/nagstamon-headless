@@ -1,44 +1,184 @@
 minimum_pre_commit_version: "3.5.0"
 
+fail_fast: true
+
 default_language_version:
-  python: python3
+  python: python3.13
 
 repos:
   - repo: local
     hooks:
-      - id: lint
-        name: Qualidade (Ruff, Mypy, Vulture, limite de linhas)
-        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --stage lint
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      - id: test
-        name: Testes (pytest + cobertura 100%)
-        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --stage test
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      - id: security
-        name: Seguranca (Bandit + pip-audit)
-        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --stage security
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
       - id: commitlint
         name: Commitlint (Conventional Commits)
-        entry: npx --yes -p @commitlint/cli -p @commitlint/config-conventional commitlint --config linters/commitlint.config.mjs --edit
+        entry: bash linters/git-hooks/commitlint.sh
         language: system
-        stages: [commit-msg]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, commit-msg]
 
-      - id: cleanup
-        name: Limpeza (caches e artefatos locais)
-        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --stage clean --light-clean
+      - id: python-lint
+        name: "Python | Lint"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: python-security
+        name: "Python | Seguranca"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage security
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: python-gitleaks
+        name: "Python | Gitleaks"
+        entry: bash linters/git-hooks/gitleaks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: python-test
+        name: "Python | Testes"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage test --coverage-fail-under 100
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: python-validate
+        name: "Python | Validate"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage validate
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: python-build
+        name: "Python | Build"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage build
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: docker-lint
+        name: "Docker | Lint"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area docker --stage lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: docker-security
+        name: "Docker | Seguranca"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area docker --stage security
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: docker-test
+        name: "Docker | Testes"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area docker --stage test
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: docker-validate
+        name: "Docker | Validate"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area docker --stage validate
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: docker-build
+        name: "Docker | Build"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area docker --stage build
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: github-lint
+        name: "GitHub | Lint"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area github --stage lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: github-security
+        name: "GitHub | Seguranca"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area github --stage security
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: github-test
+        name: "GitHub | Testes"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area github --stage test
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: github-validate
+        name: "GitHub | Validate"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area github --stage validate
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: github-build
+        name: "GitHub | Build"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area github --stage build
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: scripts-lint
+        name: "Scripts | Lint"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area scripts --stage lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: scripts-security
+        name: "Scripts | Seguranca"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area scripts --stage security
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: scripts-test
+        name: "Scripts | Testes"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area scripts --stage test
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: scripts-validate
+        name: "Scripts | Validate"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area scripts --stage validate
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: scripts-build
+        name: "Scripts | Build"
+        entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area scripts --stage build
         language: system
         pass_filenames: false
         always_run: true

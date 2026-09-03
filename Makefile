@@ -18,7 +18,7 @@ RESET  := \033[0m
 
 .DEFAULT_GOAL := help
 
-.PHONY: help app-install app-lint app-test app-security app-run app-pre-commit \
+.PHONY: help app-install app-lint app-test app-security app-run app-ping app-pre-commit \
 	app-pre-commit-run app-setup app-clean docker-up docker-down docker-ps \
 	docker-logs docker-sh docker-restart docker-clean docker-rebuild docker-smoke
 
@@ -32,13 +32,14 @@ help:
 	@echo -e ""
 	@echo -e "$(YELLOW)App:$(RESET)"
 	@echo -e "  $(GREEN)app-run$(RESET)            - Executa o daemon local"
-	@echo -e "  $(GREEN)app-test$(RESET)           - Testes + cobertura 100%"
-	@echo -e "  $(GREEN)app-lint$(RESET)           - Lint / format / mypy / vulture"
-	@echo -e "  $(GREEN)app-security$(RESET)       - Bandit + pip-audit"
-	@echo -e "  $(GREEN)app-clean$(RESET)          - Limpa caches e logs que nao sao do dia atual"
+	@echo -e "  $(GREEN)app-ping$(RESET)           - Probe HTTP dos monitores e grava enabled"
+	@echo -e "  $(GREEN)app-test$(RESET)           - Python | Testes + cobertura 100%"
+	@echo -e "  $(GREEN)app-lint$(RESET)           - Python | Lint (ruff/mypy/vulture)"
+	@echo -e "  $(GREEN)app-security$(RESET)       - Python | Seguranca (bandit/pip-audit)"
+	@echo -e "  $(GREEN)app-clean$(RESET)          - Python | Limpa caches e logs antigos"
 	@echo -e "  $(GREEN)app-install$(RESET)        - Pip no .venv"
 	@echo -e "  $(GREEN)app-setup$(RESET)          - Bootstrap .venv + deps (+ hooks se houver git)"
-	@echo -e "  $(GREEN)app-pre-commit$(RESET)     - Instala hooks no Git"
+	@echo -e "  $(GREEN)app-pre-commit$(RESET)     - Instala hooks (matriz CI, fail_fast)"
 	@echo -e "  $(GREEN)app-pre-commit-run$(RESET) - Roda hooks em todos os arquivos"
 	@echo -e ""
 	@echo -e "$(YELLOW)Docker:$(RESET)"
@@ -60,20 +61,24 @@ app-install:
 	$(PYTHON) -m pip install -e $(APP_DIR)
 
 app-lint:
-	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --stage lint
+	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --area python --stage lint
 
 app-test:
-	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --stage test
+	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --area python --stage test
 
 app-security:
-	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --stage security
+	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --area python --stage security
 
 app-run:
 	$(PYTHON) run.py
 
+app-ping:
+	PYTHONPATH=$(APP_DIR)/src $(PYTHON) -m presentation.cli.ping
+
 app-pre-commit:
 	bash linters/git-hooks/install.sh
-	chmod +x linters/git-hooks/bin/resolve_venv_python.sh linters/git-hooks/bin/python linters/git-hooks/bin/pre-commit
+	chmod +x linters/git-hooks/bin/resolve_venv_python.sh linters/git-hooks/bin/python linters/git-hooks/bin/pre-commit \
+		linters/git-hooks/commitlint.sh linters/git-hooks/gitleaks.sh
 
 app-pre-commit-run:
 	$(PYTHON) -m pre_commit run --all-files -c .pre-commit-config.yaml
@@ -82,7 +87,7 @@ app-setup:
 	bash app/scripts/setup.sh
 
 app-clean:
-	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --stage clean
+	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --area python --stage clean
 
 docker-up:
 	@test -f .env || cp .env.example .env
