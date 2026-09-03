@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.10.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.9.1...v1.10.0) (2026-09-03)
+
+### Features
+
+* adiciona app-ping e matriz CI/CD crash-first por area ([60b8f36](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/60b8f364d89c97af5195967c2b066f6c683c9e01))
+
+### Bug Fixes
+
+* **ci:** pina pacotes do semantic-release para o generateNotes ([95e8d41](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/95e8d416ceecbf7275772d204d36f0d939bcfc40))
+
 ## Unreleased
 
 ### Features
