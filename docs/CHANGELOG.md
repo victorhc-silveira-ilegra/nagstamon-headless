@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.10.0...v1.10.1) (2026-10-02)
+
+### Bug Fixes
+
+* silencia falsos positivos do sensor falcon mantendo alertas k8s criticos ([d2ebdc5](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/d2ebdc5b3322057bc8f24dc9c972aa83c90d7d7d))
+
 ## [1.10.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.9.1...v1.10.0) (2026-09-03)
 
 ### Features
