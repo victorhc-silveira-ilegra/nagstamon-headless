@@ -53,7 +53,7 @@ Ports sao `typing.Protocol` (sem ABC).
 - inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo, exceto quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` (turno da manha)
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
-- Kubernetes (`kubelet`, `kubernetes`, `k8s`, `kube` em alertname/desc/status; `pod` no alertname)
+- Kubernetes: falsos positivos como Falcon sensor (`falcon`), `kubelet`, `kubernetes`, `k8s`, `kube` em alertname/desc/status/host/app e `pod` no alertname (alertas com severidade CRITICAL nunca são silenciados como ruído)
 - states suppressed/pending/unprocessed e silenced/inhibited
 
 `AlertView` (`domain/services/alert_view.py`): snapshot operacional em texto (CRITICAL primeiro). Formato limpo chave-valor (`*Campo:* Valor`) com labels em `*negrito*` (markdown do Chat), sem espaçamento artificial de colunas. Campos: Status (`severity`), Client (`server`), Host (`host` ou `app`), Service (`alertname`), Ambiente (`environment` ou inferido), Duração no Nagstamon (`duration_str` ou `starts_at`), Horário do envio (`HH:MM:SS (DD/MM/YYYY)`), Início do alarme (`HH:MM:SS (DD/MM/YYYY)`), Status information (`status_text` ou `desc`), Criticidade SLA (Carência 10m/15m/20m), Tempo decorrido (SLA) (em minutos, ex.: `55m`), ID do Incidente (SLA) (`server/service/host`). Placeholder `N/A` / vazio vira `--`. Google Chat e logs diários recebem o mesmo texto formatado, sem card estruturado e sem fence monoespaçado.

@@ -26,6 +26,7 @@ KUBE_NOISE = re.compile(
     r"(?<![a-z0-9])kube(?![a-z0-9])"
     r")"
 )
+FALCON_NOISE = re.compile(r"(?i)\bfalcon")
 SKIP_STATES = frozenset({"suppressed", "pending", "unprocessed"})
 MAX_DURATION_SECONDS = 86400
 DURATION_UNITS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
@@ -55,10 +56,17 @@ def _aware(instant: datetime) -> datetime:
 
 
 def _is_kubernetes_noise(alert: Alert) -> bool:
+    if alert.severity.value == "CRITICAL":
+        return False
+    full_haystack = (
+        f"{alert.alertname} {alert.desc} {alert.status_text} {alert.host} {alert.app}"
+    )
+    if FALCON_NOISE.search(full_haystack) is not None:
+        return True
     if "pod" in alert.alertname.lower():
         return True
-    haystack = f"{alert.alertname} {alert.desc} {alert.status_text}"
-    return KUBE_NOISE.search(haystack) is not None
+    text_haystack = f"{alert.alertname} {alert.desc} {alert.status_text}"
+    return KUBE_NOISE.search(text_haystack) is not None
 
 
 class AlertFilterPolicy:

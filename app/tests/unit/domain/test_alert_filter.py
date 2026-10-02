@@ -289,14 +289,51 @@ def test_filter_kubernetes_noise() -> None:
         host="kubelet-node-1",
         starts_at=started,
     )
+    falcon_container = _alert(
+        alertname="KubeContainerWaiting",
+        host="falcon-node-sensor-vcrqp",
+        desc="pod/falcon-node-sensor waiting",
+        status_text="pod in falcon-system waiting state for longer than 1 hour",
+        starts_at=started,
+    )
+    falcon_daemonset = _alert(
+        alertname="KubeDaemonSetRolloutStuck",
+        host="monitoring-kube-state-metrics",
+        desc="DaemonSet falcon-system/falcon-node-sensor has not finished",
+        status_text="DaemonSet falcon-system/falcon-node-sensor rollout stuck",
+        starts_at=started,
+    )
+    critical_k8s = _alert(
+        alertname="NodeNotReady",
+        severity=Severity("critical"),
+        desc="kubernetes node not ready",
+        starts_at=started,
+    )
+    critical_pod = _alert(
+        alertname="KubePodCrashLooping",
+        severity=Severity("critical"),
+        desc="crash looping in namespace prod",
+        starts_at=started,
+    )
+    real_kube_warning = _alert(
+        alertname="KubeDeploymentReplicasMismatch",
+        app="spi-messaging-secondary-processor",
+        desc="Deployment spi-messaging replicas mismatch",
+        starts_at=started,
+    )
     assert policy.is_filtered(kubelet, NOW)
     assert policy.is_filtered(cpu_pod, NOW)
     assert policy.is_filtered(k8s_desc, NOW)
     assert policy.is_filtered(k8s_token, NOW)
     assert policy.is_filtered(kube_word, NOW)
+    assert policy.is_filtered(falcon_container, NOW)
+    assert policy.is_filtered(falcon_daemonset, NOW)
     assert not policy.is_filtered(keep, NOW)
     assert not policy.is_filtered(java, NOW)
     assert not policy.is_filtered(host_only, NOW)
+    assert not policy.is_filtered(critical_k8s, NOW)
+    assert not policy.is_filtered(critical_pod, NOW)
+    assert not policy.is_filtered(real_kube_warning, NOW)
 
 
 def test_filter_custom_window_and_timezone() -> None:

@@ -33,7 +33,7 @@ Com `DEDUP_ENABLED` (ledger ligado): cada alerta claimed vira um `publish([alert
 - Formatacao em `domain/services/alert_view.py`; `StdoutAlertSink` imprime e emite `poll.sink.published`.
 - `GoogleChatWebhookSink` envia o mesmo texto (`render_effective_alerts`), um POST por publish, com `Lock`; HTTP/rede: `poll.gchat.failed` e raises; o use case faz `release` do fingerprint.
 - Fluxo com ledger: `try_claim` → `publish` → `confirm`; fingerprint identifica o problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico; `DEDUP_LEDGER_PATH` = arquivo com flock; vazio = memoria). `sent` nao expira (uma emissao por problema enquanto persistir).
-- Kubernetes (`kubelet` / `k8s` / `kube` / alertname com `pod`) nao entra no snapshot.
+- Kubernetes: falsos positivos (Falcon sensor, `kubelet` / `k8s` / `kube` / alertname com `pod`) nao entram no snapshot; severidade CRITICAL nunca e silenciada.
 - Inicio conhecido (`starts_at` ou duracao) anterior ao boot do daemon nao entra no snapshot (salvo no turno da manha com `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true`).
 - Hold-down silencioso antes do snapshot: muito critico 10 min (`FILTER_HOLD_FAST_SECONDS`), mediano 15 min (`FILTER_HOLD_CRITICAL_SECONDS`), baixo 20 min (`FILTER_HOLD_WARNING_SECONDS`); tipo ganha de severidade; INFO nao dispara.
 - Fuso = `WINDOW_TIMEZONE`; janela comercial = `WINDOW_ENABLED` / `WINDOW_START` / `WINDOW_END` / `WINDOW_DAYS` / `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (worker injeta).
