@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.12.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.11.0...v1.12.0) (2026-10-23)
+
+### Features
+
+* estende padrao senior de observabilidade para alertas legados e infraestrutura ([79b7a5e](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/79b7a5e5e83329d199a8d984a6d8f1c761726d5f))
+
 ## [1.11.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.10.1...v1.11.0) (2026-10-23)
 
 ### Features
