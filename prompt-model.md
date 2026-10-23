@@ -89,13 +89,23 @@ Ajuste nomes de entrypoint/build file a linguagem; preserve a intencao das pasta
 
 Imports da aplicacao devem ser limpos (sem prefixo desnecessario tipo `app.src`): `from domain...`, `from application...`.
 
-## 4. Qualidade e DX
+## 4. Qualidade, CI/CD, Pre-commit e Makefile
 
-Gates conceituais obrigatorios: lint/format, type check, dead code, test+coverage, security, hooks (pre-commit + commit-msg), Make (`app-install`, `app-lint`, `app-test`, `app-security`, `app-clean`, `app-setup`).
-
-Orquestrador central (`app/scripts/operations/clean_workspace.py`) deve ser o unico ponto chamado pelo Makefile para lint/test/security/clean.
-
-Para Python novo: preserve o stack deste projeto (Ruff, mypy strict, vulture, pytest-cov 100%, bandit, pip-audit, pre-commit, commitlint, Makefile).
+- **Matriz por categoria e ordem fixa de estagios**: tanto o `.pre-commit-config.yaml` (`fail_fast: true`, apos `Commitlint`) quanto o CI/CD (`.github/workflows/ci.yml` + composite actions em `.github/actions/ci/validate-*`) devem ser separados por categoria (`Python`, `Docker`, `GitHub`, `Scripts`) e executar **estritamente e somente** os 5 estagios nesta ordem exata:
+  1. `Lint`
+  2. `Seguranca`
+  3. `Testes`
+  4. `Validate`
+  5. `Build`
+- **Sem hooks avulsos fora do padrao**: ferramentas como `gitleaks`, `bandit` e `pip-audit` devem rodar integradas dentro do estagio `Seguranca` do orquestrador (`clean_workspace.py --area <area> --stage security`), nunca como etapa/hook separado fora dos 5 estagios.
+- **Orquestrador central**: `app/scripts/operations/clean_workspace.py --area <python|docker|github|scripts> --stage <lint|security|test|validate|build|clean>` e o unico ponto chamado pelo Pre-commit, pelo CI/CD e pelo `Makefile`.
+- **Comandos manuais no `Makefile` para cada etapa**: cada um dos 5 estagios de cada categoria deve ter seu alvo manual no `Makefile`:
+  - `make app-lint`, `make app-security`, `make app-test` / `make app-tests`, `make app-validate`, `make app-build` (e aliases `python-*`)
+  - `make docker-lint`, `make docker-security`, `make docker-test` / `make docker-tests`, `make docker-validate`, `make docker-build`
+  - `make github-lint`, `make github-security`, `make github-test` / `make github-tests`, `make github-validate`, `make github-build`
+  - `make scripts-lint`, `make scripts-security`, `make scripts-test` / `make scripts-tests`, `make scripts-validate`, `make scripts-build`
+- **Documentacao GitHub**: manter `README.md` na raiz do repositorio e documentar workflows/actions do GitHub em `.github/workflows.md` (e `docs/devops.md`).
+- Para Python: preservar o stack (Ruff, mypy strict, vulture, limite de 300 linhas, pytest-cov 100%, bandit, pip-audit, gitleaks, pre-commit, commitlint, semantic-release).
 
 ## 5. Logging semantico
 

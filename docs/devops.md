@@ -56,13 +56,18 @@ Em cada area o orquestrador `app/scripts/operations/clean_workspace.py` executa:
 `Lint` → `Seguranca` → `Testes` → `Validate` → `Build`
 
 ```bash
-python app/scripts/operations/clean_workspace.py --area python --stage lint
-python app/scripts/operations/clean_workspace.py --area docker --stage build
+make app-lint
+make app-security
+make app-test        # ou make app-tests
+make app-validate
+make app-build
 ```
+
+Comandos manuais equivalentes tambem estao disponiveis para `docker-*`, `github-*` e `scripts-*` (`<area>-lint`, `<area>-security`, `<area>-test` / `<area>-tests`, `<area>-validate`, `<area>-build`).
 
 | Area | Lint | Seguranca | Testes | Validate | Build |
 |------|------|-----------|--------|----------|-------|
-| python | Ruff, mypy, vulture, limite 300 | Bandit, pip-audit (+ Gitleaks no job) | pytest cov 100% | `pip install -e` + import | `python -m build` |
+| python | Ruff, mypy, vulture, limite 300 | Bandit, pip-audit, Gitleaks | pytest cov 100% | `pip install -e` + import | `python -m build` |
 | docker | Hadolint (`infra/docker/.hadolint.yaml`) | Trivy config/fs | `compose config --quiet` | arquivos + compose | build da imagem `nagstamon-headless:ci` |
 | github | actionlint | Gitleaks em `.github` | actionlint | estrutura de actions | diretorios ci/shared |
 | scripts | `bash -n` + `make -n help` | grep de segredos | `make help` | scripts do Makefile | sintaxe shell |

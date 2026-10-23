@@ -5,7 +5,7 @@
 `fail_fast: true`. Mesmas areas e stages do [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 
 1. Commitlint (local; tambem no stage `commit-msg`)
-2. Python: Lint → Seguranca → Gitleaks → Testes → Validate → Build
+2. Python: Lint → Seguranca → Testes → Validate → Build
 3. Docker: Lint → Seguranca → Testes → Validate → Build
 4. GitHub: Lint → Seguranca → Testes → Validate → Build
 5. Scripts: Lint → Seguranca → Testes → Validate → Build
@@ -34,7 +34,7 @@ Config: [`commitlint.config.mjs`](commitlint.config.mjs)
 
 ## CI seguranca (binario, fora do pip)
 
-- **gitleaks** — job Python e area GitHub; hook local [`git-hooks/gitleaks.sh`](git-hooks/gitleaks.sh)
+- **gitleaks** — integrado nos estagios `Seguranca` das categorias Python e GitHub via `clean_workspace.py`
 - Config: [`.gitleaks.toml`](../.gitleaks.toml)
 
 ## Release

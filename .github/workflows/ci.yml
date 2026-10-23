@@ -73,9 +73,7 @@ jobs:
         run: python app/scripts/operations/clean_workspace.py --area python --stage lint
       - name: Python | Seguranca
         shell: bash
-        run: |
-          python app/scripts/operations/clean_workspace.py --area python --stage security
-          gitleaks detect --source . --verbose --redact
+        run: python app/scripts/operations/clean_workspace.py --area python --stage security
       - name: Python | Testes
         shell: bash
         run: python app/scripts/operations/clean_workspace.py --area python --stage test --coverage-fail-under 100

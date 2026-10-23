@@ -17,6 +17,7 @@ from operations.gates.common import (
     build_safe_remove,
     clean_named_caches,
     clean_python_artifacts,
+    require_binary,
     run_cmd,
     run_tool,
     stage_ok,
@@ -262,6 +263,13 @@ def security() -> None:
         print(
             "[AVISO] Pip-audit encontrou vulnerabilidades no ambiente de pacotes Python."
         )
+    gitleaks = require_binary("gitleaks")
+    run_cmd(
+        [gitleaks, "detect", "--source", str(REPO_ROOT), "--verbose", "--redact"],
+        description="Gitleaks Security Scan",
+        cwd=REPO_ROOT,
+    )
+    stage_ok("Seguranca Python concluida")
 
 
 def test(fail_under: int = 100) -> None:

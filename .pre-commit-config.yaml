@@ -32,14 +32,6 @@ repos:
         always_run: true
         stages: [pre-commit]
 
-      - id: python-gitleaks
-        name: "Python | Gitleaks"
-        entry: bash linters/git-hooks/gitleaks.sh
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
       - id: python-test
         name: "Python | Testes"
         entry: linters/git-hooks/bin/python app/scripts/operations/clean_workspace.py --area python --stage test --coverage-fail-under 100

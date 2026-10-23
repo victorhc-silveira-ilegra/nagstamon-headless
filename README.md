@@ -30,8 +30,10 @@ Ajuste `.env` (proxy, VPN, diretorio de `.conf`, intervalo). Credenciais ficam n
 
 ```bash
 make app-lint
-make app-test
 make app-security
+make app-test
+make app-validate
+make app-build
 make app-run
 make docker-up
 make docker-smoke
