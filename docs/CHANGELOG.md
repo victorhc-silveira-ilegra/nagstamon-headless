@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.13.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.12.0...v1.13.0) (2026-10-23)
+
+### Features
+
+* **alertas:** calibra filtros SRE, hold-down e reconciliacao do ledger para Google Chat ([bc786b2](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/bc786b2cf24efc36826bd0fab44fbfcffe2331de))
+
 ## [1.12.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.11.0...v1.12.0) (2026-10-23)
 
 ### Features
