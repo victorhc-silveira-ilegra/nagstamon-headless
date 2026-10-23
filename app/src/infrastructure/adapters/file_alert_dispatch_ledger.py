@@ -124,3 +124,31 @@ class FileAlertDispatchLedger:
             records = self._load()
             records.pop(fingerprint, None)
             self._dump(records)
+
+    def reconcile_active(
+        self,
+        *,
+        active_fingerprints: frozenset[str],
+        now: datetime,
+        window_minutes: int,
+    ) -> None:
+        sent_cutoff = now - timedelta(minutes=window_minutes)
+        pending_cutoff = now - timedelta(seconds=self._pending_ttl_seconds)
+        with self._exclusive():
+            records = self._load()
+            kept: Store = {}
+            for key, record in records.items():
+                instant = _parse_at(record.get("at"))
+                if instant is None:
+                    continue
+                status = record.get("status")
+                if status == STATUS_PENDING and instant <= pending_cutoff:
+                    continue
+                if (
+                    status == STATUS_SENT
+                    and key not in active_fingerprints
+                    and instant <= sent_cutoff
+                ):
+                    continue
+                kept[key] = record
+            self._dump(kept)

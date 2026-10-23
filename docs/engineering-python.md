@@ -50,10 +50,11 @@ Ports sao `typing.Protocol` (sem ABC).
 - `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
 - duracao so em Python: hold-down acima ate &lt; `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `duration_str`; INFO e sem inicio conhecido nao disparam
 - janela diaria `[WINDOW_START, WINDOW_END]` em `WINDOW_TIMEZONE` e em `WINDOW_DAYS` (default seg–sex), quando `WINDOW_ENABLED=true`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje (ou antes da janela se `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true`, default no turno da manha)
-- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo, exceto quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` (turno da manha)
+- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): no modo sem janela (`WINDOW_ENABLED=false`), nao entra no snapshot efetivo; com `WINDOW_ENABLED=true`, o corte do turno (`WINDOW_START` + ledger) governa para nao perder alertas nascidos no turno antes de um restart
 - texto de erro de conexao / URL invalida
-- Watchdog / InfoInhibitor
-- Ruídos de OS e legado silenciados: `ROOT MAIL BOX` (mailbox for root is not empty), probes de `DEBUG` (`APP ... DEBUG`), rotinas de manutenção sem impacto (`CHECK TABELAS SEM ESTATISTICAS`)
+- Watchdog / InfoInhibitor / ExampleAlert
+- Alertas operacionais liberados (com tratativa historica): `ROOT MAIL BOX`, `CHECK TABELAS SEM ESTATISTICAS`, `DBA - CHECK REPLICACAO`, `App Java Heap`, `PUPPET-AGENT`, `All disks` / `Disk Root`, `App health` / `CCS` / `JUD`, `Internal Server Error`, `Lock de Banco`, `Check Sync NTP`, `TargetDown`
+- Ruídos de legado silenciados em `WARNING`: probes de `DEBUG` (`APP ... DEBUG`) e objetos descompilados sem impacto imediato (`CHECK OBJETOS INVALIDOS`)
 - Kubernetes: alertas essenciais das 4 camadas SRE/DevOps são liberados (SLO burn rate, RED metrics, ingress/mesh, CrashLoopBackOff, OOMKilled, deployment mismatch, pod pending, HPA, jobs/cronjobs, node conditions, CPU throttling excessivo, headroom/overcommit N+1, saturação de PVC e failed mounts, autoscaling, etcd, CoreDNS, Kube-API, certs TLS < 30d, admission webhooks); falsos positivos são silenciados (sensor Falcon `falcon-*`, `KubeletServerCertificateExpiration`, `AltoConsumodeCPUPod` e ruídos genéricos de k8s sem impacto SRE); alertas CRITICAL nunca são silenciados
 - states suppressed/pending/unprocessed e silenced/inhibited
 

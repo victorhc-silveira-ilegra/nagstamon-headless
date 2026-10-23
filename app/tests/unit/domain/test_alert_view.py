@@ -198,11 +198,12 @@ def test_render_default_timezone_and_placeholders() -> None:
 
 def test_render_escapes_chat_markup_in_values() -> None:
     text = render_effective_alerts(
-        [_alert(status_text="disk *full* _now_")],
+        [_alert(status_text="disk *full* _now_ `cmd`")],
         FETCHED,
         DISPLAY_TIMEZONE,
     )
-    assert "disk \\*full\\* \\_now\\_" in text
+    assert "disk full _now_ 'cmd'" in text
+    assert "\\_" not in text
 
 
 def test_detect_environment_sources() -> None:

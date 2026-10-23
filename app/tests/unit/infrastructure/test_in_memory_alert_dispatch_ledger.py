@@ -76,3 +76,19 @@ def test_memory_ledger_keeps_stale_fingerprints() -> None:
     later = NOW + timedelta(minutes=30)
     assert ledger.try_claim(fingerprint="new", now=later, window_minutes=30) is True
     assert ledger.try_claim(fingerprint="old", now=later, window_minutes=30) is False
+
+
+def test_memory_ledger_reconcile_active_expires_resolved() -> None:
+    ledger = InMemoryAlertDispatchLedger()
+    assert ledger.try_claim(fingerprint="active", now=NOW, window_minutes=30) is True
+    assert ledger.try_claim(fingerprint="resolved", now=NOW, window_minutes=30) is True
+    later = NOW + timedelta(minutes=30)
+    ledger.reconcile_active(
+        active_fingerprints=frozenset({"active"}),
+        now=later,
+        window_minutes=30,
+    )
+    assert ledger.try_claim(fingerprint="active", now=later, window_minutes=30) is False
+    assert (
+        ledger.try_claim(fingerprint="resolved", now=later, window_minutes=30) is True
+    )

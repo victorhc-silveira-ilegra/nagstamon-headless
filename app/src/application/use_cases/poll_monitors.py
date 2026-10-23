@@ -78,6 +78,12 @@ class PollMonitorsUseCase:
                 claimed_count=len(effective),
                 skipped_duplicate_count=0,
             )
+        active_fingerprints = frozenset(fingerprint_for(alert) for alert in raw_alerts)
+        self._dispatch_ledger.reconcile_active(
+            active_fingerprints=active_fingerprints,
+            now=now,
+            window_minutes=self._dedup_window_minutes,
+        )
         unique, intra_skipped = _unique_by_dedup_key(effective)
         claimed: list[Alert] = []
         skipped = intra_skipped

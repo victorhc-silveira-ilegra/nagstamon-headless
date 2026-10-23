@@ -241,6 +241,7 @@ def test_filter_alertmanager_noise_and_silence() -> None:
     policy = AlertFilterPolicy()
     assert policy.is_filtered(_alert(alertname="Watchdog"), NOW)
     assert policy.is_filtered(_alert(alertname="InfoInhibitor"), NOW)
+    assert policy.is_filtered(_alert(alertname="ExampleAlert"), NOW)
     assert policy.is_filtered(_alert(alert_state="pending"), NOW)
     assert policy.is_filtered(_alert(silenced_by=("s1",)), NOW)
     assert policy.is_filtered(_alert(inhibited_by=("i1",)), NOW)
@@ -263,6 +264,11 @@ def test_filter_legacy_and_os_noise() -> None:
         desc="tabelas sem estatisticas no banco",
         starts_at=NOW - timedelta(minutes=30),
     )
+    invalid_obj_dba = _alert(
+        alertname="[SUP]DBA - CHECK OBJETOS INVALIDOS",
+        desc="WARNING - Objetos invalidos = 1",
+        starts_at=NOW - timedelta(minutes=30),
+    )
     error_app = _alert(
         alertname="APP MTR003 ERROR",
         desc="critical error in app",
@@ -273,9 +279,10 @@ def test_filter_legacy_and_os_noise() -> None:
         desc="tablespace full",
         starts_at=NOW - timedelta(minutes=30),
     )
-    assert policy.is_filtered(root_mail, NOW)
+    assert not policy.is_filtered(root_mail, NOW)
     assert policy.is_filtered(debug_app, NOW)
-    assert policy.is_filtered(stats_dba, NOW)
+    assert not policy.is_filtered(stats_dba, NOW)
+    assert policy.is_filtered(invalid_obj_dba, NOW)
     assert not policy.is_filtered(error_app, NOW)
     assert not policy.is_filtered(tablespace_dba, NOW)
 
@@ -555,14 +562,14 @@ def test_apply_keeps_effective_alerts() -> None:
 
 def test_filter_started_before_daemon_boot() -> None:
     boot = NOW - timedelta(minutes=15)
-    policy = AlertFilterPolicy(not_before=boot)
+    policy = AlertFilterPolicy(not_before=boot, window_enabled=False)
     already_open = _alert(starts_at=NOW - timedelta(minutes=30))
     after_boot = _alert(starts_at=NOW - timedelta(minutes=12))
     at_boot = _alert(starts_at=boot)
     cgi_old = _alert(duration_str="0d 0h 20m")
     cgi_unknown = _alert()
     naive_boot = datetime(2026, 8, 13, 16, 55, 0)
-    naive_policy = AlertFilterPolicy(not_before=naive_boot)
+    naive_policy = AlertFilterPolicy(not_before=naive_boot, window_enabled=False)
     naive_old = _alert(starts_at=datetime(2026, 8, 13, 16, 30, 0))
     assert policy.is_filtered(already_open, NOW)
     assert not policy.is_filtered(after_boot, NOW)
@@ -570,6 +577,14 @@ def test_filter_started_before_daemon_boot() -> None:
     assert policy.is_filtered(cgi_old, NOW)
     assert policy.is_filtered(cgi_unknown, NOW)
     assert naive_policy.is_filtered(naive_old, NOW)
+    mid_shift_restart = AlertFilterPolicy(
+        window_start=time(13, 30),
+        window_end=time(18, 0),
+        timezone=SP_TZ,
+        not_before=NOW - timedelta(minutes=5),
+        window_enabled=True,
+    )
+    assert not mid_shift_restart.is_filtered(already_open, NOW)
 
 
 def test_filter_hold_classes_and_missing_start() -> None:

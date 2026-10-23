@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class InMemoryAlertDispatchLedger:
@@ -32,3 +32,20 @@ class InMemoryAlertDispatchLedger:
     def release(self, *, fingerprint: str) -> None:
         with self._lock:
             self._claims.pop(fingerprint, None)
+
+    def reconcile_active(
+        self,
+        *,
+        active_fingerprints: frozenset[str],
+        now: datetime,
+        window_minutes: int,
+    ) -> None:
+        cutoff = now - timedelta(minutes=window_minutes)
+        with self._lock:
+            expired = [
+                key
+                for key, claimed_at in self._claims.items()
+                if key not in active_fingerprints and claimed_at <= cutoff
+            ]
+            for key in expired:
+                self._claims.pop(key, None)

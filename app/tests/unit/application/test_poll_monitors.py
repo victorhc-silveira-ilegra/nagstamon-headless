@@ -87,6 +87,18 @@ class FakeLedger:
         self.released.append(fingerprint)
         self.claims.pop(fingerprint, None)
 
+    def reconcile_active(
+        self,
+        *,
+        active_fingerprints: frozenset[str],
+        now: datetime,
+        window_minutes: int,
+    ) -> None:
+        cutoff = now - timedelta(minutes=window_minutes)
+        for key in list(self.claims):
+            if key not in active_fingerprints and self.claims[key] <= cutoff:
+                self.claims.pop(key, None)
+
 
 class FakeSound:
     def __init__(self) -> None:

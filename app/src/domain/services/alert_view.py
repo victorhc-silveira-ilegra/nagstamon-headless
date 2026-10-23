@@ -189,12 +189,7 @@ def status_information(alert: Alert) -> str:
 
 
 def _markup_value(value: str) -> str:
-    return (
-        value.replace("*", "\\*")
-        .replace("_", "\\_")
-        .replace("~", "\\~")
-        .replace("`", "\\`")
-    )
+    return value.replace("*", "").replace("`", "'")
 
 
 def _labeled(label: str, value: str) -> str:

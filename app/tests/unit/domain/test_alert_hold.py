@@ -76,6 +76,15 @@ def test_hold_fast_disk_and_down() -> None:
     assert hold_seconds(
         _alert(alertname="SPI Mensageria", desc="pix processing error")
     ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="App Java Heap", desc="heap usage critical")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="DBA - CHECK REPLICACAO", desc="replication lag")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="ROOT MAIL BOX", desc="WARNING: Mailbox for root is not empty")
+    ) == (HOLD_WARNING_SECONDS)
 
 
 def test_hold_transient_overrides_critical() -> None:

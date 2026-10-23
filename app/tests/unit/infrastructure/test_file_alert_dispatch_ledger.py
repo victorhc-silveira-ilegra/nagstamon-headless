@@ -133,3 +133,53 @@ def test_file_ledger_thread_race_only_one_wins(tmp_path: Path) -> None:
         thread.join()
     assert results.count(True) == 1
     assert results.count(False) == 7
+
+
+def test_file_ledger_reconcile_active_expires_resolved_after_window(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "dispatch-ledger.json"
+    ledger = FileAlertDispatchLedger(path, pending_ttl_seconds=120)
+    assert ledger.try_claim(fingerprint="active", now=NOW, window_minutes=30) is True
+    ledger.confirm(fingerprint="active", now=NOW)
+    assert ledger.try_claim(fingerprint="resolved", now=NOW, window_minutes=30) is True
+    ledger.confirm(fingerprint="resolved", now=NOW)
+    assert (
+        ledger.try_claim(fingerprint="stale_pending", now=NOW, window_minutes=30)
+        is True
+    )
+    records = json.loads(path.read_text(encoding="utf-8"))
+    records["bad_at"] = {"status": "sent", "at": "invalid"}
+    path.write_text(json.dumps(records), encoding="utf-8")
+
+    within_window = NOW + timedelta(minutes=15)
+    ledger.reconcile_active(
+        active_fingerprints=frozenset({"active"}),
+        now=within_window,
+        window_minutes=30,
+    )
+    assert (
+        ledger.try_claim(fingerprint="resolved", now=within_window, window_minutes=30)
+        is False
+    )
+
+    after_window = NOW + timedelta(minutes=30)
+    ledger.reconcile_active(
+        active_fingerprints=frozenset({"active"}),
+        now=after_window,
+        window_minutes=30,
+    )
+    assert (
+        ledger.try_claim(fingerprint="active", now=after_window, window_minutes=30)
+        is False
+    )
+    assert (
+        ledger.try_claim(fingerprint="resolved", now=after_window, window_minutes=30)
+        is True
+    )
+    assert (
+        ledger.try_claim(
+            fingerprint="stale_pending", now=after_window, window_minutes=30
+        )
+        is True
+    )

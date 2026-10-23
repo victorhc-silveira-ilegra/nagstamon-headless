@@ -16,3 +16,11 @@ class AlertDispatchLedgerPort(Protocol):
     def confirm(self, *, fingerprint: str, now: datetime) -> None: ...
 
     def release(self, *, fingerprint: str) -> None: ...
+
+    def reconcile_active(
+        self,
+        *,
+        active_fingerprints: frozenset[str],
+        now: datetime,
+        window_minutes: int,
+    ) -> None: ...

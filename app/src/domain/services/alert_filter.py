@@ -18,12 +18,11 @@ STATUS_INFO_FILTER = re.compile(
     r"Authentication problem|Connection timeout|Service unavailable|"
     r"Unknown error|Monitor URL not valid)"
 )
-NOISE_ALERTNAMES = frozenset({"watchdog", "infoinhibitor"})
+NOISE_ALERTNAMES = frozenset({"watchdog", "infoinhibitor", "examplealert"})
 LEGACY_NOISE = re.compile(
     r"(?i)(?:"
-    r"root\s*mail\s*box|mailbox\s*for\s*root|"
     r"(?<![a-z])debug(?![a-z])|"
-    r"tabelas?\s*sem\s*estatisticas?"
+    r"objetos?\s*invalidos?"
     r")"
 )
 KUBE_NOISE = re.compile(
@@ -44,6 +43,8 @@ K8S_SRE_ALLOWED = re.compile(
     r"ingress|servicemesh|envoy|nginx|connectionpool|activeconnection|"
     r"crashloop|livenessprobe|restarts?|oomkilled|oom|"
     r"deploymentreplicas|replicasmismatch|rollout|podpending|pending|"
+    r"targetdown|aggregatedapi|podnotready|daemonset|containerwaiting|"
+    r"clusterdegraded|allreplicasdown|toomanypods|"
     r"hpa|jobfailed|cronjob|jobnotcompleted|"
     r"notready|memorypressure|diskpressure|pidpressure|"
     r"throttl|overcommit|persistentvolume|pvc|failedmount|volumeattachment|"
@@ -174,6 +175,7 @@ class AlertFilterPolicy:
             return True
         if (
             not self._allow_past_active_alerts
+            and not self._window_enabled
             and self._not_before is not None
             and start < _aware(self._not_before)
         ):
