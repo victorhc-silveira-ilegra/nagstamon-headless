@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.10.1...v1.11.0) (2026-10-23)
+
+### Features
+
+* revisa matriz de alertas k8s e sre liberando as 4 camadas e silenciando ruidos ([ecca1a9](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/ecca1a919364eb90e37d8e343679676296140504))
+
 ## [1.10.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.10.0...v1.10.1) (2026-10-02)
 
 ### Bug Fixes
