@@ -63,11 +63,11 @@ Ports sao `typing.Protocol` (sem ABC).
 
 | Comando | O que roda |
 |---------|------------|
-| `make app-lint` | Python \| Lint (Ruff, mypy strict, vulture, limite 300 linhas) |
-| `make app-security` | Python \| Seguranca (bandit + pip-audit + gitleaks) |
-| `make app-test` / `make app-tests` | Python \| Testes (pytest-xdist + coverage 100%) |
-| `make app-validate` | Python \| Validate (`pip install -e` + smoke import) |
-| `make app-build` | Python \| Build (`python -m build`) |
+| `make app-lint` | Lint de tudo: Python, Docker, GitHub e Scripts |
+| `make app-security` | Seguranca de tudo: Python, Docker, GitHub e Scripts |
+| `make app-test` / `make app-tests` | Testes de tudo: Python (cov 100%), Docker, GitHub e Scripts |
+| `make app-validate` | Validate de tudo: Python, Docker, GitHub e Scripts |
+| `make app-build` | Build de tudo: Python, Docker, GitHub e Scripts |
 | `make app-pre-commit-run` | hooks em todos os arquivos (matriz CI, `fail_fast`; requer git) |
 
 CI (GitHub Actions): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — matriz por area (Python/Docker/GitHub/Scripts) crash-first; `release` com semantic-release em `main`. Detalhes: [devops.md](devops.md).

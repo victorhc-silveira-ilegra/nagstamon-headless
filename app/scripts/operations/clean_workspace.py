@@ -20,9 +20,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Nagstamon Headless Quality Gate")
     parser.add_argument(
         "--area",
-        choices=list(AREAS),
-        default=None,
-        help="Area tecnologica (default: python para compatibilidade)",
+        choices=[*AREAS, "all"],
+        default="all",
+        help="Area tecnologica (default: all)",
     )
     parser.add_argument(
         "--stage",
@@ -42,8 +42,12 @@ def main() -> None:
         help="Limpa apenas caches sem remover artefatos de build",
     )
     args = parser.parse_args()
-    area = args.area or "python"
-    if area == "python" and args.stage in {
+    target_areas = (
+        ("python",)
+        if args.stage == "clean" and args.area == "all"
+        else (AREAS if args.area == "all" else (args.area,))
+    )
+    if "python" in target_areas and args.stage in {
         "lint",
         "test",
         "pytest",
@@ -53,13 +57,14 @@ def main() -> None:
         "build",
     }:
         ensure_project_python(args.stage if args.stage != "pytest" else "test")
-    os.chdir(_APP_ROOT if area == "python" else _APP_ROOT.parent)
-    run_area_stage(
-        area,
-        args.stage,
-        coverage_fail_under=args.coverage_fail_under,
-        light_clean=args.light_clean,
-    )
+    for area in target_areas:
+        os.chdir(_APP_ROOT if area == "python" else _APP_ROOT.parent)
+        run_area_stage(
+            area,
+            args.stage,
+            coverage_fail_under=args.coverage_fail_under,
+            light_clean=args.light_clean,
+        )
     print("\n[SUCESSO] Estagio concluido com sucesso.")
 
 

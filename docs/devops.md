@@ -56,14 +56,12 @@ Em cada area o orquestrador `app/scripts/operations/clean_workspace.py` executa:
 `Lint` → `Seguranca` → `Testes` → `Validate` → `Build`
 
 ```bash
-make app-lint
-make app-security
-make app-test        # ou make app-tests
-make app-validate
-make app-build
+make app-lint        # Lint de tudo (Python, Docker, GitHub, Scripts)
+make app-security    # Seguranca de tudo (Python, Docker, GitHub, Scripts)
+make app-test        # Testes de tudo (ou make app-tests)
+make app-validate    # Validate de tudo (Python, Docker, GitHub, Scripts)
+make app-build       # Build de tudo (Python, Docker, GitHub, Scripts)
 ```
-
-Comandos manuais equivalentes tambem estao disponiveis para `docker-*`, `github-*` e `scripts-*` (`<area>-lint`, `<area>-security`, `<area>-test` / `<area>-tests`, `<area>-validate`, `<area>-build`).
 
 | Area | Lint | Seguranca | Testes | Validate | Build |
 |------|------|-----------|--------|----------|-------|

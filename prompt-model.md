@@ -98,12 +98,13 @@ Imports da aplicacao devem ser limpos (sem prefixo desnecessario tipo `app.src`)
   4. `Validate`
   5. `Build`
 - **Sem hooks avulsos fora do padrao**: ferramentas como `gitleaks`, `bandit` e `pip-audit` devem rodar integradas dentro do estagio `Seguranca` do orquestrador (`clean_workspace.py --area <area> --stage security`), nunca como etapa/hook separado fora dos 5 estagios.
-- **Orquestrador central**: `app/scripts/operations/clean_workspace.py --area <python|docker|github|scripts> --stage <lint|security|test|validate|build|clean>` e o unico ponto chamado pelo Pre-commit, pelo CI/CD e pelo `Makefile`.
-- **Comandos manuais no `Makefile` para cada etapa**: cada um dos 5 estagios de cada categoria deve ter seu alvo manual no `Makefile`:
-  - `make app-lint`, `make app-security`, `make app-test` / `make app-tests`, `make app-validate`, `make app-build` (e aliases `python-*`)
-  - `make docker-lint`, `make docker-security`, `make docker-test` / `make docker-tests`, `make docker-validate`, `make docker-build`
-  - `make github-lint`, `make github-security`, `make github-test` / `make github-tests`, `make github-validate`, `make github-build`
-  - `make scripts-lint`, `make scripts-security`, `make scripts-test` / `make scripts-tests`, `make scripts-validate`, `make scripts-build`
+- **Orquestrador central**: `app/scripts/operations/clean_workspace.py --area <python|docker|github|scripts|all> --stage <lint|security|test|validate|build|clean>` e o unico ponto chamado pelo Pre-commit, pelo CI/CD e pelo `Makefile`.
+- **Comandos manuais unificados no `Makefile` para cada etapa (sem separar por categoria)**: cada um dos 5 estagios possui um comando manual unico no `Makefile` que executa aquele estagio para **todas** as categorias (`Python`, `Docker`, `GitHub`, `Scripts`):
+  - `make app-lint` (Lint de tudo)
+  - `make app-security` (Seguranca de tudo)
+  - `make app-test` / `make app-tests` (Testes de tudo)
+  - `make app-validate` (Validate de tudo)
+  - `make app-build` (Build de tudo)
 - **Documentacao GitHub**: manter `README.md` na raiz do repositorio e documentar workflows/actions do GitHub em `.github/workflows.md` (e `docs/devops.md`).
 - Para Python: preservar o stack (Ruff, mypy strict, vulture, limite de 300 linhas, pytest-cov 100%, bandit, pip-audit, gitleaks, pre-commit, commitlint, semantic-release).
 
