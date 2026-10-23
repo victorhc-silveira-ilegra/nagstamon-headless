@@ -61,6 +61,21 @@ def test_hold_fast_disk_and_down() -> None:
     assert hold_seconds(
         _alert(alertname="FailedMount", desc="volume mount failed")
     ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="MQ RCVR BCB2", desc="channel is stopped")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="APP HEALTH", desc="connection refused on port 8080")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="CHECK JAVA APPS", desc="socket timeout after 10s")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="DBA - REDO LOGS ATIVOS", desc="redo log thread active")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="SPI Mensageria", desc="pix processing error")
+    ) == (HOLD_FAST_SECONDS)
 
 
 def test_hold_transient_overrides_critical() -> None:

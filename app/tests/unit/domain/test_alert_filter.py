@@ -246,6 +246,40 @@ def test_filter_alertmanager_noise_and_silence() -> None:
     assert policy.is_filtered(_alert(inhibited_by=("i1",)), NOW)
 
 
+def test_filter_legacy_and_os_noise() -> None:
+    policy = AlertFilterPolicy()
+    root_mail = _alert(
+        alertname="ROOT MAIL BOX",
+        status_text="WARNING: Mailbox for root is not empty",
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    debug_app = _alert(
+        alertname="APP MTR003 DEBUG",
+        desc="debug probe enabled",
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    stats_dba = _alert(
+        alertname="DBA  - CHECK TABELAS SEM ESTATISTICAS",
+        desc="tabelas sem estatisticas no banco",
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    error_app = _alert(
+        alertname="APP MTR003 ERROR",
+        desc="critical error in app",
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    tablespace_dba = _alert(
+        alertname="DBA  - CHECK TABLESPACES",
+        desc="tablespace full",
+        starts_at=NOW - timedelta(minutes=30),
+    )
+    assert policy.is_filtered(root_mail, NOW)
+    assert policy.is_filtered(debug_app, NOW)
+    assert policy.is_filtered(stats_dba, NOW)
+    assert not policy.is_filtered(error_app, NOW)
+    assert not policy.is_filtered(tablespace_dba, NOW)
+
+
 def test_filter_kubernetes_noise() -> None:
     policy = AlertFilterPolicy()
     started = NOW - timedelta(minutes=30)

@@ -19,6 +19,13 @@ STATUS_INFO_FILTER = re.compile(
     r"Unknown error|Monitor URL not valid)"
 )
 NOISE_ALERTNAMES = frozenset({"watchdog", "infoinhibitor"})
+LEGACY_NOISE = re.compile(
+    r"(?i)(?:"
+    r"root\s*mail\s*box|mailbox\s*for\s*root|"
+    r"(?<![a-z])debug(?![a-z])|"
+    r"tabelas?\s*sem\s*estatisticas?"
+    r")"
+)
 KUBE_NOISE = re.compile(
     r"(?i)("
     r"kubelet|kubernetes|"
@@ -151,6 +158,10 @@ class AlertFilterPolicy:
         if STATUS_INFO_FILTER.search(status_text):
             return True
         if alert.alertname.lower() in NOISE_ALERTNAMES:
+            return True
+        if alert.severity.value != "CRITICAL" and LEGACY_NOISE.search(
+            f"{alert.alertname} {status_text}"
+        ):
             return True
         if _is_kubernetes_noise(alert):
             return True

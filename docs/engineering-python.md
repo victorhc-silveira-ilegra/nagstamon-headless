@@ -41,9 +41,9 @@ Ports sao `typing.Protocol` (sem ABC).
 
 | Criticidade | Quem | Env | Default |
 |-------------|------|-----|---------|
-| Muito critico | DOWN/disco/cert/login | `FILTER_HOLD_FAST_SECONDS` | 600 (10 min) |
+| Muito critico | DOWN/unreachable, canais bancários/PIX/BCB/Celcoin, MQ stopped, connection refused/socket timeout, CrashLoopBackOff, OOMKilled, error budget, NodeNotReady, FailedMount, etcd quorum, disco/filesystem/tablespace/redo log, cert/TLS, login/SSO | `FILTER_HOLD_FAST_SECONDS` | 600 (10 min) |
 | Mediano | CRITICAL restante | `FILTER_HOLD_CRITICAL_SECONDS` | 900 (15 min) |
-| Baixo | WARNING e CPU/mem/load/fila/lock/ping | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
+| Baixo | WARNING e CPU/mem/load/fila/throttling/latência/lock/ping/flap | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
 
 `AlertFilterPolicy` (janela, dias uteis, fuso e holds injetados pelo worker a partir do `.env`):
 
@@ -53,6 +53,7 @@ Ports sao `typing.Protocol` (sem ABC).
 - inicio conhecido anterior ao boot do daemon (`not_before` no composition root): nao entra no snapshot efetivo, exceto quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` (turno da manha)
 - texto de erro de conexao / URL invalida
 - Watchdog / InfoInhibitor
+- Ruídos de OS e legado silenciados: `ROOT MAIL BOX` (mailbox for root is not empty), probes de `DEBUG` (`APP ... DEBUG`), rotinas de manutenção sem impacto (`CHECK TABELAS SEM ESTATISTICAS`)
 - Kubernetes: alertas essenciais das 4 camadas SRE/DevOps são liberados (SLO burn rate, RED metrics, ingress/mesh, CrashLoopBackOff, OOMKilled, deployment mismatch, pod pending, HPA, jobs/cronjobs, node conditions, CPU throttling excessivo, headroom/overcommit N+1, saturação de PVC e failed mounts, autoscaling, etcd, CoreDNS, Kube-API, certs TLS < 30d, admission webhooks); falsos positivos são silenciados (sensor Falcon `falcon-*`, `KubeletServerCertificateExpiration`, `AltoConsumodeCPUPod` e ruídos genéricos de k8s sem impacto SRE); alertas CRITICAL nunca são silenciados
 - states suppressed/pending/unprocessed e silenced/inhibited
 
