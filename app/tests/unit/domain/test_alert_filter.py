@@ -258,9 +258,19 @@ def test_filter_kubernetes_noise() -> None:
         desc="POD spi-auto-pix-messenger com consumo de CPU",
         starts_at=started,
     )
-    k8s_desc = _alert(
-        alertname="NodeNotReady",
-        desc="kubernetes node not ready",
+    generic_k8s = _alert(
+        alertname="KubeComponentStatus",
+        desc="kubernetes component status generic",
+        starts_at=started,
+    )
+    generic_pod = _alert(
+        alertname="PodGenericFlap",
+        desc="pod generic flap info",
+        starts_at=started,
+    )
+    kube_word = _alert(
+        alertname="ApiDown",
+        desc="kube api unreachable",
         starts_at=started,
     )
     keep = _alert(
@@ -271,16 +281,6 @@ def test_filter_kubernetes_noise() -> None:
     java = _alert(
         alertname="CHECK JAVA APPS",
         desc="Socket timeout after 30 seconds",
-        starts_at=started,
-    )
-    k8s_token = _alert(
-        alertname="CrashLoop",
-        desc="k8s workload restarting",
-        starts_at=started,
-    )
-    kube_word = _alert(
-        alertname="ApiDown",
-        desc="kube api unreachable",
         starts_at=started,
     )
     host_only = _alert(
@@ -315,16 +315,116 @@ def test_filter_kubernetes_noise() -> None:
         desc="crash looping in namespace prod",
         starts_at=started,
     )
-    real_kube_warning = _alert(
+    slo_burn = _alert(
+        alertname="SLOBurnRate",
+        desc="errorbudget burning fast",
+        starts_at=started,
+    )
+    red_err = _alert(
+        alertname="Http5xxRateHigh",
+        desc="5xx error rate on k8s",
+        starts_at=started,
+    )
+    mesh_sat = _alert(
+        alertname="IngressSaturation",
+        desc="Envoy connection pool exhausted",
+        starts_at=started,
+    )
+    crashloop = _alert(
+        alertname="KubePodCrashLooping",
+        desc="Pod in CrashLoopBackOff",
+        starts_at=started,
+    )
+    oom = _alert(
+        alertname="KubeOOMKilled",
+        desc="OOMKilled container",
+        starts_at=started,
+    )
+    mismatch = _alert(
         alertname="KubeDeploymentReplicasMismatch",
         app="spi-messaging-secondary-processor",
-        desc="Deployment spi-messaging replicas mismatch",
+        desc="Deployment on kubernetes replicas mismatch",
+        starts_at=started,
+    )
+    pending = _alert(
+        alertname="KubePodPending",
+        desc="Pod pending for 30m",
+        starts_at=started,
+    )
+    hpa = _alert(
+        alertname="KubeHpaMaxedOut",
+        desc="HPA max replicas reached",
+        starts_at=started,
+    )
+    job = _alert(
+        alertname="KubeJobFailed",
+        desc="Job failed after 3 retries",
+        starts_at=started,
+    )
+    node_notready = _alert(
+        alertname="NodeNotReady",
+        desc="kubernetes node not ready",
+        starts_at=started,
+    )
+    pressure = _alert(
+        alertname="NodeMemoryPressure",
+        desc="Node under MemoryPressure",
+        starts_at=started,
+    )
+    throttl = _alert(
+        alertname="CPUThrottlingHigh",
+        desc="container CPU throttled > 20%",
+        starts_at=started,
+    )
+    overcommit = _alert(
+        alertname="NodeResourceOvercommit",
+        desc="No headroom N+1",
+        starts_at=started,
+    )
+    pvc = _alert(
+        alertname="KubePersistentVolumeFillingUp",
+        desc="kubelet volume stats < 15%",
+        starts_at=started,
+    )
+    mount = _alert(
+        alertname="FailedMount",
+        desc="VolumeAttachment failed",
+        starts_at=started,
+    )
+    autoscaler = _alert(
+        alertname="KarpenterProvisioningFailed",
+        desc="Karpenter unable to launch",
+        starts_at=started,
+    )
+    etcd = _alert(
+        alertname="etcdHighFsyncDurations",
+        desc="etcd fsync latency high",
+        starts_at=started,
+    )
+    dns = _alert(
+        alertname="CoreDNSLatencyHigh",
+        desc="CoreDNS latency high",
+        starts_at=started,
+    )
+    api = _alert(
+        alertname="KubeAPIErrorBudgetBurn",
+        desc="kube-apiserver 5xx high",
+        starts_at=started,
+    )
+    cert = _alert(
+        alertname="TLSCertificateExpiringSoon",
+        desc="cert-manager cert expires",
+        starts_at=started,
+    )
+    webhook = _alert(
+        alertname="AdmissionWebhookTimeout",
+        desc="Kyverno webhook timeout",
         starts_at=started,
     )
     assert policy.is_filtered(kubelet, NOW)
     assert policy.is_filtered(cpu_pod, NOW)
-    assert policy.is_filtered(k8s_desc, NOW)
-    assert policy.is_filtered(k8s_token, NOW)
+    assert policy.is_filtered(generic_k8s, NOW)
+    assert policy.is_filtered(generic_pod, NOW)
     assert policy.is_filtered(kube_word, NOW)
     assert policy.is_filtered(falcon_container, NOW)
     assert policy.is_filtered(falcon_daemonset, NOW)
@@ -333,7 +433,27 @@ def test_filter_kubernetes_noise() -> None:
     assert not policy.is_filtered(host_only, NOW)
     assert not policy.is_filtered(critical_k8s, NOW)
     assert not policy.is_filtered(critical_pod, NOW)
-    assert not policy.is_filtered(real_kube_warning, NOW)
+    assert not policy.is_filtered(slo_burn, NOW)
+    assert not policy.is_filtered(red_err, NOW)
+    assert not policy.is_filtered(mesh_sat, NOW)
+    assert not policy.is_filtered(crashloop, NOW)
+    assert not policy.is_filtered(oom, NOW)
+    assert not policy.is_filtered(mismatch, NOW)
+    assert not policy.is_filtered(pending, NOW)
+    assert not policy.is_filtered(hpa, NOW)
+    assert not policy.is_filtered(job, NOW)
+    assert not policy.is_filtered(node_notready, NOW)
+    assert not policy.is_filtered(pressure, NOW)
+    assert not policy.is_filtered(throttl, NOW)
+    assert not policy.is_filtered(overcommit, NOW)
+    assert not policy.is_filtered(pvc, NOW)
+    assert not policy.is_filtered(mount, NOW)
+    assert not policy.is_filtered(autoscaler, NOW)
+    assert not policy.is_filtered(etcd, NOW)
+    assert not policy.is_filtered(dns, NOW)
+    assert not policy.is_filtered(api, NOW)
+    assert not policy.is_filtered(cert, NOW)
+    assert not policy.is_filtered(webhook, NOW)
 
 
 def test_filter_custom_window_and_timezone() -> None:

@@ -27,6 +27,23 @@ KUBE_NOISE = re.compile(
     r")"
 )
 FALCON_NOISE = re.compile(r"(?i)\bfalcon")
+KUBELET_CERT_NOISE = re.compile(r"(?i)kubeletservercertificateexpiration")
+KUBE_POD_CPU_NOISE = re.compile(r"(?i)altoconsumodecpu.*pod|podcpuusagehigh")
+K8S_SRE_ALLOWED = re.compile(
+    r"(?i)(?:"
+    r"sloburnrate|errorbudget|burnrate|"
+    r"trafficdrop|requestrate|http.*5xx|httperror|grpcerror|errorrate|"
+    r"latency|responsetime|slowrequest|durationp9[59]|"
+    r"ingress|servicemesh|envoy|nginx|connectionpool|activeconnection|"
+    r"crashloop|livenessprobe|restarts?|oomkilled|oom|"
+    r"deploymentreplicas|replicasmismatch|rollout|podpending|pending|"
+    r"hpa|jobfailed|cronjob|jobnotcompleted|"
+    r"notready|memorypressure|diskpressure|pidpressure|"
+    r"throttl|overcommit|persistentvolume|pvc|failedmount|volumeattachment|"
+    r"karpenter|clusterautoscaler|"
+    r"etcd|coredns|kubeapi|apiserver|cert.*expir|tls.*expir|webhook|kyverno|gatekeeper"
+    r")"
+)
 SKIP_STATES = frozenset({"suppressed", "pending", "unprocessed"})
 MAX_DURATION_SECONDS = 86400
 DURATION_UNITS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
@@ -63,9 +80,15 @@ def _is_kubernetes_noise(alert: Alert) -> bool:
     )
     if FALCON_NOISE.search(full_haystack) is not None:
         return True
-    if "pod" in alert.alertname.lower():
+    if KUBELET_CERT_NOISE.search(alert.alertname) is not None:
+        return True
+    if KUBE_POD_CPU_NOISE.search(alert.alertname) is not None:
         return True
     text_haystack = f"{alert.alertname} {alert.desc} {alert.status_text}"
+    if K8S_SRE_ALLOWED.search(text_haystack) is not None:
+        return False
+    if "pod" in alert.alertname.lower():
+        return True
     return KUBE_NOISE.search(text_haystack) is not None
 
 

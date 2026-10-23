@@ -46,6 +46,21 @@ def test_hold_fast_disk_and_down() -> None:
     assert hold_seconds(
         _alert(alertname="LoginFail", desc="login endpoint failed")
     ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(
+        _alert(alertname="KubePodCrashLooping", desc="CrashLoopBackOff")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(_alert(alertname="KubeOOMKilled", desc="OOMKilled pod")) == (
+        HOLD_FAST_SECONDS
+    )
+    assert hold_seconds(
+        _alert(alertname="SLOBurnRate", desc="error_budget burning")
+    ) == (HOLD_FAST_SECONDS)
+    assert hold_seconds(_alert(alertname="NodeNotReady", desc="node notready")) == (
+        HOLD_FAST_SECONDS
+    )
+    assert hold_seconds(
+        _alert(alertname="FailedMount", desc="volume mount failed")
+    ) == (HOLD_FAST_SECONDS)
 
 
 def test_hold_transient_overrides_critical() -> None:

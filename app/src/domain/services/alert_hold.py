@@ -11,6 +11,10 @@ _PAGING = frozenset({"CRITICAL", "WARNING"})
 _FAST = re.compile(
     r"(?i)(?:"
     r"(?<![a-z])down(?![a-z])|unreachable|"
+    r"crashloop|oomkilled|(?<![a-z])oom(?![a-z])|"
+    r"burn_?rate|error_?budget|"
+    r"notready|not_ready|failedmount|failed_mount|"
+    r"quorum|(?<![a-z])leader(?![a-z])|"
     r"disk|(?<![a-z])disco(?![a-z])|filesystem|tablespace|inode|"
     r"certificate|certificado|(?<![a-z])cert(?![a-z])|(?<![a-z])tls(?![a-z])|expir|"
     r"payment|pagamento|(?<![a-z])login(?![a-z])|(?<![a-z])sso(?![a-z])"
