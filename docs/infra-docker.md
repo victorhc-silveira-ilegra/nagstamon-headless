@@ -2,15 +2,21 @@
 
 Stack minima para rodar o daemon headless. Nao inclui monitores (Alertmanager/Nagios): eles sao alcancados via rede do host e proxy.
 
-## Servico
+## Servicos
 
-- Imagem: `nagstamon-headless:local` (Python 3.11, pacote `nagstamon-headless`)
-- `network_mode: host` para usar o proxy e rotas locais
-- Volume somente leitura: `${HOST_SERVERS_DIR:-~/.nagstamon/servers}` → `/etc/nagstamon/servers`
-- Volume do ledger: `../../data` → `/var/lib/nagstamon-headless` (`DEDUP_LEDGER_PATH`)
-- Volume dos logs diarios: `../../logs` → `/var/log/nagstamon-headless` (`LOG_DIR`); o arquivo `nagstamon-YYYY-MM-DD.log` e atualizado no host a cada escrita
-- `SERVERS_DIR=/etc/nagstamon/servers` dentro do container
-- `SOUND_ENABLED=false` no compose (container sem dispositivo de audio)
+- `nagstamon-headless`: daemon de polling e notificacao
+  - Imagem: `nagstamon-headless:local` (Python 3.11, pacote `nagstamon-headless`)
+  - `network_mode: host` para usar o proxy e rotas locais
+  - Volume somente leitura: `${HOST_SERVERS_DIR:-~/.nagstamon/servers}` → `/etc/nagstamon/servers`
+  - Volume do ledger: `../../data` → `/var/lib/nagstamon-headless` (`DEDUP_LEDGER_PATH`)
+  - Volume dos logs diarios: `../../logs` → `/var/log/nagstamon-headless` (`LOG_DIR`); o arquivo `nagstamon-YYYY-MM-DD.log` e atualizado no host a cada escrita
+  - `SERVERS_DIR=/etc/nagstamon/servers` dentro do container
+  - `SOUND_ENABLED=false` no compose (container sem dispositivo de audio)
+- `proxy-bridge`: bridge local de proxy com resolucao de DNS para Squid
+  - Comando: `nagstamon-headless-proxy`
+  - `network_mode: host` escutando em `127.0.0.1:3128` (configuravel via `PROXY_BRIDGE_HOST` e `PROXY_BRIDGE_PORT`)
+  - Recebe conexoes CONNECT (ex: navegadores e Grafana), resolve o dominio via DNS local/VPN e repassa para o Squid (`PROXY_ADDR`) via IP com header `Host` preservado
+
 
 ## Comandos
 

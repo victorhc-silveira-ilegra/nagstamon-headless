@@ -144,6 +144,8 @@ class Settings:
     sound_enabled: bool
     gchat_webhook_url: str
     dedup_ledger_path: Path | None
+    proxy_bridge_host: str = "127.0.0.1"
+    proxy_bridge_port: int = 3128
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -226,6 +228,13 @@ class Settings:
         gchat_webhook_url = os.environ.get("GCHAT_WEBHOOK_URL", "").strip()
         ledger_raw = os.environ.get("DEDUP_LEDGER_PATH", "").strip()
         dedup_ledger_path = Path(ledger_raw).expanduser() if ledger_raw else None
+        proxy_bridge_host = (
+            os.environ.get("PROXY_BRIDGE_HOST", "127.0.0.1").strip() or "127.0.0.1"
+        )
+        proxy_bridge_port = _parse_positive_int(
+            os.environ.get("PROXY_BRIDGE_PORT", "3128"),
+            "PROXY_BRIDGE_PORT",
+        )
         return cls(
             servers_dir=servers_dir,
             proxy_addr=proxy_addr,
@@ -251,4 +260,6 @@ class Settings:
             sound_enabled=sound_enabled,
             gchat_webhook_url=gchat_webhook_url,
             dedup_ledger_path=dedup_ledger_path,
+            proxy_bridge_host=proxy_bridge_host,
+            proxy_bridge_port=proxy_bridge_port,
         )
