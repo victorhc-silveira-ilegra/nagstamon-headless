@@ -10,7 +10,7 @@ import httpx
 
 from domain.entities.alert import Alert
 from domain.services.alert_view import DISPLAY_TIMEZONE, render_effective_alerts
-from infrastructure.adapters.http_client import USER_AGENT
+from infrastructure.adapters.http_client import USER_AGENT, DnsResolvingProxyTransport
 from infrastructure.logging import (
     POLL_GCHAT_FAILED,
     POLL_GCHAT_PUBLISHED,
@@ -38,10 +38,13 @@ class GoogleChatWebhookSink:
         self._webhook_url = webhook_url
         self._timezone = timezone or DISPLAY_TIMEZONE
         self._lock = threading.Lock()
+        resolved_transport = transport
+        if resolved_transport is None and proxy:
+            resolved_transport = DnsResolvingProxyTransport(proxy=proxy, verify=False)
         self._client = httpx.Client(
             timeout=timeout_seconds,
-            proxy=proxy or None,
-            transport=transport,
+            proxy=None if resolved_transport is not None else (proxy or None),
+            transport=resolved_transport,
             headers=USER_AGENT,
         )
 

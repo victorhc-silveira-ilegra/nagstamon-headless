@@ -148,3 +148,10 @@ def test_gchat_request_error_without_debug(
     finally:
         gchat_logger.setLevel(previous)
     assert _has_event(caplog, POLL_GCHAT_FAILED)
+
+
+def test_gchat_init_with_proxy() -> None:
+    sink = GoogleChatWebhookSink(
+        WEBHOOK, timeout_seconds=5.0, proxy="http://127.0.0.1:3128"
+    )
+    assert sink is not None
