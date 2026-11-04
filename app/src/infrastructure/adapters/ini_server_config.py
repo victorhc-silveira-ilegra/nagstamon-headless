@@ -142,15 +142,19 @@ class IniServerConfigAdapter:
                 enabled = parser.getboolean(section, "enabled", fallback=False)
                 if require_enabled and not enabled:
                     continue
-                url = parser.get(
+                raw_url = parser.get(
                     section,
                     "monitor_url",
                     fallback=parser.get(section, "url", fallback=""),
                 )
-                if not url.strip():
+                url = re.sub(r"^http:/([^/])", r"http://\1", raw_url.strip())
+                if not url:
                     continue
-                proxy = parser.get(
-                    section, "proxy_address", fallback=self._default_proxy
+                use_proxy = parser.getboolean(section, "use_proxy", fallback=True)
+                proxy = (
+                    parser.get(section, "proxy_address", fallback=self._default_proxy)
+                    if use_proxy
+                    else ""
                 )
                 collected.append(
                     MonitorServer(

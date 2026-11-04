@@ -25,9 +25,9 @@ Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e 
 
 | Port | Adapter | Notas |
 |------|---------|--------|
-| `ServerConfigPort` | `IniServerConfigAdapter` | `*.conf` estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled`; username/password desofuscados |
-| `MonitorClientPort` | `CompositeMonitorClient` | httpx; fail-open por servidor |
-| `MonitorProbePort` | `HttpMonitorProbeAdapter` | GET AM `/api/v2/alerts` ou Nagios CGI; 2xx = reachable; Zabbix/Icinga/Centreon/Checkmk = False |
+| `ServerConfigPort` | `IniServerConfigAdapter` | `*.conf` estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled`; suporte a `use_proxy=False`; username/password desofuscados |
+| `MonitorClientPort` | `CompositeMonitorClient` | httpx com resolucao DNS local em proxy; fail-open por servidor |
+| `MonitorProbePort` | `HttpMonitorProbeAdapter` | stream GET AM `/api/v2/alerts` ou Nagios CGI; 2xx = reachable; Zabbix/Icinga/Centreon/Checkmk = False |
 | `AlertSinkPort` | `StdoutAlertSink` + `GoogleChatWebhookSink` via `CompositeAlertSink` | mesmo snapshot texto no stdout e no webhook (`{"text": ...}`); Chat raises apos log para o ledger dar release |
 | `ClockPort` | `SystemClock` | UTC |
 | `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | `try_claim` / `confirm` / `release`; dedup por problema (`server`/`alertname`/`app`/`host`); arquivo com flock se `DEDUP_LEDGER_PATH` |

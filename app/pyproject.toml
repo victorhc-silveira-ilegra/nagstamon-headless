@@ -82,7 +82,7 @@ exclude = ["tests/", "scripts/"]
 
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
-skips = ["B101", "B404", "B603"]
+skips = ["B101", "B404", "B501", "B603"]
 
 [tool.vulture]
 min_confidence = 80

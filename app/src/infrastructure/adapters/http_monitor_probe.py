@@ -29,15 +29,15 @@ class HttpMonitorProbeAdapter:
         url = self._probe_url(server)
         client = build_http_client(server, self._timeout_seconds, self._transport)
         try:
-            response = client.get(url)
-            if 200 <= response.status_code < 300:
-                return True
-            self._log_failed(
-                server,
-                error_type="http_status",
-                http_status=response.status_code,
-            )
-            return False
+            with client.stream("GET", url) as response:
+                if 200 <= response.status_code < 300:
+                    return True
+                self._log_failed(
+                    server,
+                    error_type="http_status",
+                    http_status=response.status_code,
+                )
+                return False
         except httpx.HTTPError as exc:
             self._log_failed(
                 server,

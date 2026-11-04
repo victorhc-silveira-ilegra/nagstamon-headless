@@ -47,8 +47,9 @@ def test_ini_reads_enabled_servers(tmp_path: Path) -> None:
         "url=\n"
         "[Nagios]\n"
         "enabled=True\n"
-        "url=http://nagios.example\n"
+        "url=http:/nagios.example\n"
         "proxy_address=http://custom:3128\n"
+        "use_proxy=False\n"
         "type=nagios\n",
         encoding="utf-8",
     )
@@ -58,11 +59,12 @@ def test_ini_reads_enabled_servers(tmp_path: Path) -> None:
     assert by_name["am"].url == "http://am.example"
     assert by_name["am"].proxy == "http://default:3128"
     assert by_name["am"].username == "user"
+    assert by_name["core"].url == "http://nagios.example"
+    assert by_name["core"].proxy == ""
     assert by_name["am"].password == "secret"
     assert by_name["am"].is_alertmanager is True
     assert by_name["am"].enabled is True
     assert by_name["core"].url == "http://nagios.example"
-    assert by_name["core"].proxy == "http://custom:3128"
     assert len(servers) == 2
     all_servers = adapter.list_all()
     all_by = {(item.name, item.url, item.enabled) for item in all_servers}

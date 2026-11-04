@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import socket
 from typing import Any
 
 import httpx
@@ -8,7 +9,10 @@ import pytest
 
 from domain.entities.monitor_server import MonitorServer
 from infrastructure.adapters.alertmanager_http import AlertmanagerHttpClient
-from infrastructure.adapters.http_client import build_http_client
+from infrastructure.adapters.http_client import (
+    DnsResolvingProxyTransport,
+    build_http_client,
+)
 from infrastructure.adapters.nagios_cgi_http import NagiosCgiHttpClient
 from infrastructure.logging.events import MONITOR_FETCH_FAILED
 
@@ -82,8 +86,40 @@ def test_build_http_client_with_and_without_auth() -> None:
     )
     client = build_http_client(proxied, 5.0)
     client.close()
+    custom_transport = httpx.HTTPTransport()
+    with_custom = build_http_client(proxied, 5.0, transport=custom_transport)
+    with_custom.close()
     anonymous = build_http_client(_nagios_server(), 5.0)
     anonymous.close()
+
+
+def test_dns_resolving_proxy_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    transport = DnsResolvingProxyTransport(proxy="http://127.0.0.1:3128")
+    monkeypatch.setattr(
+        httpx.HTTPTransport,
+        "handle_request",
+        lambda self, req: httpx.Response(200, request=req),
+    )
+    monkeypatch.setattr(socket, "gethostbyname", lambda h: "93.184.216.34")
+    req = httpx.Request("GET", "https://example.com/test")
+    resp = transport.handle_request(req)
+    assert resp.status_code == 200
+    assert req.url.host == "93.184.216.34"
+    assert req.headers.get("host") == "example.com"
+
+    req_ip = httpx.Request("GET", "https://93.184.216.34/test")
+    resp_ip = transport.handle_request(req_ip)
+    assert resp_ip.status_code == 200
+    assert req_ip.url.host == "93.184.216.34"
+
+    def _fail_dns(_: str) -> str:
+        raise socket.gaierror("lookup failed")
+
+    monkeypatch.setattr(socket, "gethostbyname", _fail_dns)
+    req_fail = httpx.Request("GET", "https://unknown.domain/test")
+    resp_fail = transport.handle_request(req_fail)
+    assert resp_fail.status_code == 200
+    assert req_fail.url.host == "unknown.domain"
 
 
 def test_alertmanager_parses_payload() -> None:
