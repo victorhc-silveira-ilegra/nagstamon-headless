@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.2...v1.14.0) (2026-11-04)
+
+### Features
+
+* **infra:** integra proxy bridge com resolucao de dns local ao docker compose ([400b2de](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/400b2de61d0eb2151196c86f9ae71ac7458d9a5f))
+
 ## [1.13.2](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.1...v1.13.2) (2026-11-04)
 
 ### Bug Fixes
