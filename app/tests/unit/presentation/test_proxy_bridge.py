@@ -161,6 +161,8 @@ def test_proxy_bridge_server_upstream_error() -> None:
     try:
         c1.sendall(b"CONNECT localhost:invalid_port HTTP/1.1\r\n\r\n")
         server.handle_client(c2)
+        reply = c1.recv(1024)
+        assert b"502 Bad Gateway" in reply
     finally:
         c1.close()
         c2.close()
@@ -293,3 +295,4 @@ def test_handle_client_upstream_empty_response() -> None:
     ):
         server.handle_client(mock_client)
     mock_upstream.close.assert_called()
+    mock_client.sendall.assert_called_with(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")

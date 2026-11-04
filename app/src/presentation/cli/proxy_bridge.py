@@ -12,6 +12,7 @@ from infrastructure.config.settings import Settings
 from infrastructure.logging import (
     PROXY_BRIDGE_FAILED,
     PROXY_BRIDGE_STARTED,
+    PROXY_BRIDGE_TUNNEL_FAILED,
     log_event,
 )
 from presentation.logging import setup_logging
@@ -79,32 +80,31 @@ class ProxyBridgeServer:
 
     def handle_client(self, client_sock: socket.socket) -> None:
         upstream: socket.socket | None = None
+        target = ""
         try:
-            with contextlib.suppress(Exception):
-                client_sock.settimeout(self._timeout)
-                req = b""
-                while b"\r\n\r\n" not in req:
-                    chunk = client_sock.recv(4096)
-                    if not chunk:
-                        return
-                    req += chunk
-                header_text = req.decode("latin1")
-                first_line = header_text.split("\r\n")[0]
-                parts = first_line.split()
-                if len(parts) < 2 or parts[0] != "CONNECT":
+            client_sock.settimeout(self._timeout)
+            req = b""
+            while b"\r\n\r\n" not in req:
+                chunk = client_sock.recv(4096)
+                if not chunk:
                     return
-                target = parts[1]
-                host, port_str = (
-                    target.split(":", 1) if ":" in target else (target, "443")
-                )
-                try:
-                    port = int(port_str)
-                except ValueError:
-                    port = 443
-                try:
-                    ip = socket.gethostbyname(host)
-                except Exception:
-                    ip = host
+                req += chunk
+            header_text = req.decode("latin1")
+            first_line = header_text.split("\r\n")[0]
+            parts = first_line.split()
+            if len(parts) < 2 or parts[0] != "CONNECT":
+                return
+            target = parts[1]
+            host, port_str = target.split(":", 1) if ":" in target else (target, "443")
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = 443
+            try:
+                ip = socket.gethostbyname(host)
+            except Exception:
+                ip = host
+            try:
                 upstream = socket.create_connection(
                     (self._upstream_host, self._upstream_port),
                     timeout=self._timeout,
@@ -117,23 +117,36 @@ class ProxyBridgeServer:
                 while b"\r\n\r\n" not in resp:
                     chunk = upstream.recv(4096)
                     if not chunk:
-                        return
+                        break
                     resp += chunk
                 if b"200 Connection established" not in resp and b"200 OK" not in resp:
-                    return
-                client_sock.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
-                client_sock.settimeout(None)
-                upstream.settimeout(None)
-                t1 = threading.Thread(
-                    target=forward_stream, args=(client_sock, upstream), daemon=True
+                    raise OSError("upstream proxy rejected tunnel")
+            except Exception as exc:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    PROXY_BRIDGE_TUNNEL_FAILED,
+                    target=target,
+                    upstream=f"{self._upstream_host}:{self._upstream_port}",
+                    error_type=type(exc).__name__,
                 )
-                t2 = threading.Thread(
-                    target=forward_stream, args=(upstream, client_sock), daemon=True
-                )
-                t1.start()
-                t2.start()
-                t1.join()
-                t2.join()
+                with contextlib.suppress(Exception):
+                    client_sock.sendall(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
+                return
+
+            client_sock.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+            client_sock.settimeout(None)
+            upstream.settimeout(None)
+            t1 = threading.Thread(
+                target=forward_stream, args=(client_sock, upstream), daemon=True
+            )
+            t2 = threading.Thread(
+                target=forward_stream, args=(upstream, client_sock), daemon=True
+            )
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
         finally:
             client_sock.close()
             if upstream is not None:

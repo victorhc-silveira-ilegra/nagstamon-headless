@@ -18,6 +18,7 @@ from infrastructure.logging.events import (
     POLL_SOUND_FAILED,
     PROXY_BRIDGE_FAILED,
     PROXY_BRIDGE_STARTED,
+    PROXY_BRIDGE_TUNNEL_FAILED,
     WORKER_BOOT_FAILED,
     WORKER_STARTED,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "POLL_SOUND_FAILED",
     "PROXY_BRIDGE_FAILED",
     "PROXY_BRIDGE_STARTED",
+    "PROXY_BRIDGE_TUNNEL_FAILED",
     "WORKER_BOOT_FAILED",
     "WORKER_STARTED",
     "log_event",
