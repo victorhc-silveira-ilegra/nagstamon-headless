@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.13.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.0...v1.13.1) (2026-11-04)
+
+### Bug Fixes
+
+* **infra:** resolve dns local em proxy, suporta use_proxy e otimiza probe com stream ([2ec6cd4](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/2ec6cd4c508c70446bf5841f5dca05f7935262b4))
+
 ## [1.13.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.12.0...v1.13.0) (2026-10-23)
 
 ### Features
