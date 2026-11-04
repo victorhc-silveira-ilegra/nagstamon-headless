@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.13.2](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.1...v1.13.2) (2026-11-04)
+
+### Bug Fixes
+
+* **infra:** suporte a proxy com resolucao dns no sink do google chat ([67c1245](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/67c12456adb37da873cfda10172e401c0fff35c7))
+
 ## [1.13.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.0...v1.13.1) (2026-11-04)
 
 ### Bug Fixes
