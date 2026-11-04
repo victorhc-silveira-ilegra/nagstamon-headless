@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.14.0...v1.14.1) (2026-11-04)
+
+### Bug Fixes
+
+* **infra:** adiciona tratamento e log semantico de falha de tunel no proxy bridge ([8cf7a82](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/8cf7a829aab1c61793955eb2289e4a19bf1b2721))
+
 ## [1.14.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.13.2...v1.14.0) (2026-11-04)
 
 ### Features
