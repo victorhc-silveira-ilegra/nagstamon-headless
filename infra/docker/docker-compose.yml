@@ -20,22 +20,3 @@ services:
       DEDUP_LEDGER_PATH: /var/lib/nagstamon-headless/dispatch-ledger.json
       LOG_DIR: /var/log/nagstamon-headless
 
-  proxy-bridge:
-    image: nagstamon-headless:local
-    build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile
-    container_name: nagstamon-proxy-bridge
-    restart: unless-stopped
-    network_mode: host
-    command: ["nagstamon-headless-proxy"]
-    env_file:
-      - path: ../../.env
-        required: false
-    environment:
-      PROXY_ADDR: ${PROXY_ADDR:-http://10.150.8.18:3128}
-      PROXY_BRIDGE_HOST: ${PROXY_BRIDGE_HOST:-127.0.0.1}
-      PROXY_BRIDGE_PORT: ${PROXY_BRIDGE_PORT:-3128}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_FORMAT: ${LOG_FORMAT:-text}
-

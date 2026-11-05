@@ -20,7 +20,6 @@ Layout operacional do Nagstamon Headless (`app/`, `infra/`, `linters/`, `docs/`)
 │   │       ├── worker/main.py
 │   │       ├── worker/cycle_guard.py
 │   │       ├── cli/ping.py
-│   │       ├── cli/proxy_bridge.py
 │   │       └── logging/ (config.py, daily.py, formatters)
 │   ├── tests/
 │   │   ├── unit/
