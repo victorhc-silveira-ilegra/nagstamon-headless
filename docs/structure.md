@@ -11,7 +11,7 @@ Este documento descreve a topologia de diretórios, convenções de empacotament
 │   ├── rules/                             # Regras de engenharia, DDD, SLA e observabilidade
 │   └── skills/                            # Habilidades e procedimentos operacionais
 ├── .github/                               # Governança de CI/CD e automações GitHub
-│   ├── README.md                          # Índice das ações e fluxos de automação
+│   ├── workflows.md                       # Especificação técnica de workflows e composite actions
 │   ├── actions/                           # Composite actions do GitHub Actions
 │   └── workflows/                         # Pipelines declarativos de CI e release
 ├── app/                                   # Raiz da aplicação Python
