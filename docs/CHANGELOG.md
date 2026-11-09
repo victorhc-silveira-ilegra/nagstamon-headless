@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.15.0](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.14.1...v1.15.0) (2026-11-09)
+
+### Features
+
+* **ci:** unifica ci local e github actions com bidirecionalidade 100% e comando make app-ci ([cc4ca93](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/commit/cc4ca9334999625daa097baba35870bc2f095a81))
+
 ## [1.14.1](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/compare/v1.14.0...v1.14.1) (2026-11-04)
 
 ### Bug Fixes
