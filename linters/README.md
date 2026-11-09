@@ -1,42 +1,38 @@
-# GitHooks e linters — Nagstamon Headless
+# Linters, Git Hooks e Governança de Commits
 
-## Pre-commit (= matriz CI)
+Especificação dos padrões de qualidade de código, análise estática e automações de hooks locais do repositório **Nagstamon Headless**.
 
-`fail_fast: true`. Mesmas areas e stages do [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+## 1. Pre-commit e Paridade com CI
 
-1. Commitlint (local; tambem no stage `commit-msg`)
-2. Python: Lint → Seguranca → Testes → Validate → Build
-3. Docker: Lint → Seguranca → Testes → Validate → Build
-4. GitHub: Lint → Seguranca → Testes → Validate → Build
-5. Scripts: Lint → Seguranca → Testes → Validate → Build
+A configuração de hooks em `.pre-commit-config.yaml` espelha com exatidão a matriz de validação do pipeline de CI (`.github/workflows/ci.yml`), operando sob o princípio de interrupção imediata na primeira falha (`fail_fast: true`):
 
-Ferramentas extras (como no CI): `npx` (commitlint), `gitleaks`, `hadolint`, `trivy`, `actionlint`, `docker`.
+1. **Commitlint**: Validação da mensagem de commit no hook `commit-msg`.
+2. **Área Python**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
+3. **Área Docker**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
+4. **Área GitHub**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
+5. **Área Scripts**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
+
+## 2. Instalação e Execução de Hooks
 
 ```bash
+# Instalação dos hooks no repositório git local
 make app-pre-commit
+
+# Execução manual dos hooks sobre toda a árvore de arquivos
+make app-pre-commit-run
 ```
 
-Ou:
+## 3. Especificação do Commitlint
 
-```bash
-bash linters/git-hooks/install.sh
-```
+A governança de mensagens exige aderência à convenção Conventional Commits (`linters/commitlint.config.mjs`):
 
-## Commitlint (Node.js, fora do pip)
+- **Tipos Permitidos**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- **Idioma**: Português brasileiro.
+- **Estrutura**: `<tipo>(<escopo opcional>): <descrição em letras minúsculas>`.
+- **Exemplo**: `feat(alert-engine): adiciona suporte a carência dinâmica por tipo de incidente`.
 
-Requer Node.js + npm. Script: [`git-hooks/commitlint.sh`](git-hooks/commitlint.sh)
+## 4. Análise de Segurança Estática
 
-```bash
-bash linters/git-hooks/commitlint.sh .git/COMMIT_EDITMSG
-```
-
-Config: [`commitlint.config.mjs`](commitlint.config.mjs)
-
-## CI seguranca (binario, fora do pip)
-
-- **gitleaks** — integrado nos estagios `Seguranca` das categorias Python e GitHub via `clean_workspace.py`
-- Config: [`.gitleaks.toml`](../.gitleaks.toml)
-
-## Release
-
-semantic-release (`linters/releaserc.json`) no job `release` apos a matriz CI em `main`. Template: [`.github/workflows/templates/release-announcement.yaml`](../.github/workflows/templates/release-announcement.yaml).
+- **Gitleaks**: Varredura de credenciais corporativas, tokens de API ou certificados acidentalmente versionados. Configurado em `.gitleaks.toml`.
+- **Bandit & Safety**: Auditoria de segurança de código Python e inventário de vulnerabilidades conhecidas em dependências de terceiros.
+- **Trivy**: Inspeção de vulnerabilidades conhecidas em camadas de imagem Docker e configurações de infraestrutura.

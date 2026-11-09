@@ -1,100 +1,67 @@
-# DevOps e CI/CD
+# DevOps, CI/CD e Automação Contínua
 
-Pipelines de integracao e release do Nagstamon Headless.
+Especificação formal da esteira de Integração Contínua (CI), Entrega Contínua (CD) e governança de qualidade do **Nagstamon Headless**.
 
-## Visao do pipeline (push em `main`)
+## 1. Topologia da Esteira de CI/CD
+
+O pipeline executado em pushes e pull requests na branch `main` adota execução paralela por área temática, convergindo para o job de versionamento semântico (`release`):
 
 ```mermaid
-flowchart LR
-  subgraph ci [CI paralelo por area]
-    PY[Python]
-    DK[Docker]
-    GH[GitHub]
-    SH[Scripts]
-  end
-  PY --> R[Release]
-  DK --> R
-  GH --> R
-  SH --> R
-  R --> S[Resumo]
-  PY --> S
+flowchart TD
+    subgraph Matrix ["CI Paralelo por Área (clean_workspace.py)"]
+        PY["Área Python\n(Lint, Sec, Test, Val, Build)"]
+        DK["Área Docker\n(Lint, Sec, Val, Build)"]
+        GH["Área GitHub\n(Validate Workflows & Actions)"]
+        SH["Área Scripts\n(Lint, Sec, Validate, Build)"]
+    end
+
+    subgraph CD ["Entrega Contínua (main)"]
+        REL["Semantic Release\n(Geração de Tag & Changelog)"]
+        SYNC["Sync Tags\n(Atualização de Tags Maiores)"]
+        SUM["Resumo do Pipeline\n(GitHub Step Summary)"]
+    end
+
+    PY --> REL
+    DK --> REL
+    GH --> REL
+    SH --> REL
+    REL --> SYNC
+    REL --> SUM
 ```
 
-| Fase | Job | Notas |
-|------|-----|-------|
-| CI | Python / Docker / GitHub / Scripts | Orquestrador + stages iguais ao pre-commit (`fail_fast`) |
-| Release | Semantic release | Apos gates verdes em `main` |
-| Resumo | Status no GitHub Summary | Sempre no push `main` |
+## 2. Matriz de Qualidade Unificada (4 Áreas x 5 Estágios)
 
-Sem Kubernetes, Terraform, Azure OIDC ou destroy: o daemon sobe via Compose local (`make docker-up`).
+A validação de software segue a estratégia *fail-fast* (crash-first) em 5 estágios determinísticos:
 
-## Workflows
+| Área Temática | Estágio 1: Lint | Estágio 2: Segurança | Estágio 3: Testes | Estágio 4: Validação | Estágio 5: Build |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Python** | Ruff, Flake8, Mypy strict, Vulture (código morto), checagem de 300 linhas | Bandit (SAST), Pip-audit (vulnerabilidades), Gitleaks | Pytest com branch coverage 100% | `pip install -e` + validação de import | `python -m build` (geração de wheel) |
+| **Docker** | Hadolint (`infra/docker/.hadolint.yaml`) | Trivy (análise de vulnerabilidades na imagem) | Validação estrutural do Compose | Inspeção de arquivos e variáveis | Build da imagem de CI (`nagstamon-headless:ci`) |
+| **GitHub** | Actionlint | Gitleaks no diretório `.github` | Actionlint (análise semântica) | Validação de integridade de composite actions | Validação da árvore de actions |
+| **Scripts** | ShellCheck e `bash -n` | Varredura de credenciais e permissões | Execução de alvos help do Makefile | Integridade de scripts do Makefile | Verificação de sintaxe de automações |
 
-| Workflow | Gatilho | Uso |
-|----------|---------|-----|
-| [ci.yml](../.github/workflows/ci.yml) | push/PR `main`, manual | CI matriz; release no push `main` |
+## 3. Comandos de Validação Local
 
-## Composite actions
-
-```text
-.github/actions/
-├── shared/
-│   └── pipeline-summary/
-└── ci/
-    ├── setup-python/
-    ├── validate-docker/
-    ├── validate-github/
-    ├── validate-scripts/
-    ├── release/
-    └── sync-tags/
-```
-
-## Stages crash-first
-
-Em cada area o orquestrador `app/scripts/operations/clean_workspace.py` executa:
-
-`Lint` → `Seguranca` → `Testes` → `Validate` → `Build`
+O desenvolvedor executa localmente exatamente as mesmas validações da nuvem por meio do `Makefile`:
 
 ```bash
-make app-lint        # Lint de tudo (Python, Docker, GitHub, Scripts)
-make app-security    # Seguranca de tudo (Python, Docker, GitHub, Scripts)
-make app-test        # Testes de tudo (ou make app-tests)
-make app-validate    # Validate de tudo (Python, Docker, GitHub, Scripts)
-make app-build       # Build de tudo (Python, Docker, GitHub, Scripts)
+# Executa o estágio em todas as 4 áreas temáticas
+make app-lint        # Lint geral
+make app-security    # Varredura de segurança completa
+make app-test        # Execução da suíte de testes com cobertura 100%
+make app-validate    # Validação estrutural e integridade
+make app-build       # Verificação de build de pacotes e contêineres
+
+# Executa todos os hooks do pre-commit em todos os arquivos
+make app-pre-commit-run
 ```
 
-| Area | Lint | Seguranca | Testes | Validate | Build |
-|------|------|-----------|--------|----------|-------|
-| python | Ruff, mypy, vulture, limite 300 | Bandit, pip-audit, Gitleaks | pytest cov 100% | `pip install -e` + import | `python -m build` |
-| docker | Hadolint (`infra/docker/.hadolint.yaml`) | Trivy config/fs | `compose config --quiet` | arquivos + compose | build da imagem `nagstamon-headless:ci` |
-| github | actionlint | Gitleaks em `.github` | actionlint | estrutura de actions | diretorios ci/shared |
-| scripts | `bash -n` + `make -n help` | grep de segredos | `make help` | scripts do Makefile | sintaxe shell |
+## 4. Governança de Commits e Release Semântica
 
-## Pre-commit
-
-Espelha a matriz CI (sequencial com `fail_fast`): commitlint + areas Python/Docker/GitHub/Scripts nos stages Lint → Seguranca → Testes → Validate → Build. Detalhes: [linters/README.md](../linters/README.md).
-
-## Secrets
-
-| Secret | Uso |
-|--------|-----|
-| `GITHUB_TOKEN` | Release, sync-tags e Gitleaks (fornecido pelo Actions) |
-
-## Operacao
-
-### Push em `main`
-
-1. CI paralelo por area.
-2. Release semantica se todos os gates passarem.
-3. Marcador `[skip-cd]` na mensagem do commit: so CI; sem release.
-4. `workflow_dispatch` com `skip_cd=true`: so CI.
-
-### Pull request
-
-Somente jobs CI por area (sem release).
-
-## Relacionados
-
-- [engineering-python.md](engineering-python.md)
-- [infra-docker.md](infra-docker.md)
-- [arquitetura.md](arquitetura.md)
+- **Conventional Commits**: Padrão obrigatório verificado por hook local do Commitlint (`linters/commitlint.config.mjs`). Commits que não respeitem a especificação são rejeitados antes do push.
+- **Semantic Release**:
+  - `feat:` gera incremento `minor` de versão.
+  - `fix:` gera incremento `patch` de versão.
+  - `feat!:`, `fix!:` ou rodapé `BREAKING CHANGE:` geram incremento `major`.
+  - Atualização automática do histórico em [docs/CHANGELOG.md](CHANGELOG.md) e publicação de GitHub Release com as notas correspondentes.
+- **Supressão de CD**: Mensagens de commit contendo `[skip-cd]` ou disparos manuais via `workflow_dispatch` com `skip_cd: true` executam exclusivamente os testes de CI, omitindo a geração de release.

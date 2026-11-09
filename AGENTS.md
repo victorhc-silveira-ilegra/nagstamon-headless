@@ -1,45 +1,65 @@
 # AGENTS.md
 
-Projeto: Nagstamon Headless (DDD / Hexagonal) — polling de Alertmanager e Nagios CGI com filtros de alertas efetivos.
+Projeto: Nagstamon Headless (DDD / Arquitetura Hexagonal) — polling de Alertmanager e Nagios CGI com filtros de alertas efetivos, carência SLA e publicação em múltiplos canais.
 
-## Prioridades
+## Governança do Repositório
 
-1. Preservar camadas em `app/src` (`domain`, `application`, `infrastructure`, `presentation`).
-2. Usar `make app-lint|app-test|app-security` (via `clean_workspace.py --area python`) apos mudancas. CI matriz em `.github/workflows/ci.yml` ([docs/devops.md](docs/devops.md)).
-3. Nao escrever comentarios no codigo.
-4. Manter cobertura 100% e Conventional Commits.
-5. Config via `.env` na raiz (`SERVERS_DIR`, `PROXY_ADDR`, `VPN_*`, `REFRESH_INTERVAL_SECONDS`, `HTTP_*`, `DEDUP_*`, `WINDOW_*`, `FILTER_HOLD_*`, `SOUND_*`, `GCHAT_*`, `LOG_*`). Proxy/VPN reais e webhook do Chat so no `.env` local.
-6. Manter docs em `docs/` alinhadas ao codigo (arquitetura, structure, engineering-*).
-7. Logs semanticos: INFO no caminho feliz (boot, primeiro ciclo, publish), WARNING em fail-open/overlap, ERROR so em boot ou ciclo quebrado. Dominio e use case nao logam. Ciclo ocioso nao emite started/finished. Tee diario em `LOG_DIR` (`logs/nagstamon-YYYY-MM-DD.log`, mesmo recorte do `make docker-logs`: INFO + snapshot); `make app-clean` remove logs que nao sejam do dia atual.
-8. Snapshot no stdout e no Google Chat: mesmo texto (Status, Client, Host, Service, Ambiente, Duração no Nagstamon, Horário do envio, Início do alarme, Status information, Criticidade SLA, Tempo decorrido (SLA), ID do Incidente (SLA) em `domain/services/alert_view.py`); Chat via mensagem `text` (nao card estruturado); dedup persistente por fingerprint do problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico) via ledger claim/confirm/release (`sent` nao expira).
-9. Filtro de data/horario/intervalo so em Python (`starts_at` ou parse de `duration_str`); sem regex da aba Filters do GUI. Janela comercial via `.env`: `WINDOW_ENABLED` / `WINDOW_START` / `WINDOW_END` / `WINDOW_DAYS` / `WINDOW_TIMEZONE` / `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (default true para turno da manha com inicio < 12h, permitindo alertas ativos da madrugada/anteriores ao boot no primeiro snapshot). Hold-down por criticidade: muito critico 10 min (`FILTER_HOLD_FAST_SECONDS`), mediano 15 min (`FILTER_HOLD_CRITICAL_SECONDS`), baixo 20 min (`FILTER_HOLD_WARNING_SECONDS`); tipo ganha de severidade; INFO nao dispara. Alerta sem inicio conhecido nao entra no snapshot.
+Todas as IAs, agentes autônomos e desenvolvedores devem seguir estritamente as regras de arquitetura, qualidade e convenções estabelecidas em `.agents/rules/` e documentadas em `docs/`.
 
-## Comandos uteis
+### Prioridades Absolutas
+
+1. **Arquitetura Hexagonal Estrita**: O código reside em `app/src/` dividido exclusivamente em `domain`, `application`, `infrastructure` e `presentation`. A regra de dependência flui apenas para dentro (detalhes dependem de abstrações; o domínio é isolado e puro).
+2. **Qualidade e Cobertura 100%**: Toda modificação de código deve ser acompanhada de testes unitários e de integração em `app/tests/`, mantendo 100% de cobertura de desvios (`branch coverage`). Nenhuma regressão é tolerada.
+3. **Ausência de Comentários no Código**: Não escrever comentários explicativos nem docstrings desnecessárias nos arquivos Python (`app/src/` e `app/tests/`). O código deve ser autoexplicativo por meio de nomes semânticos, funções coesas e tipagem rigorosa (`mypy --strict`).
+4. **Conventional Commits em Português**: Todo commit deve aderir estritamente ao padrão de Conventional Commits, escrito em português brasileiro (ex.: `feat: ...`, `fix: ...`, `refactor: ...`, `test: ...`, `docs: ...`).
+5. **Configuração Unificada via Ambiente**: Parâmetros de execução são injetados exclusivamente via variáveis de ambiente carregadas de `.env` pela infraestrutura (`Settings`). Credenciais reais e URLs de webhook pertencem apenas ao `.env` local e nunca são versionadas.
+6. **Sincronização de Documentação**: Qualquer alteração arquitetural, contratual ou comportamental deve ser imediatamente refletida na documentação correspondente em `docs/`.
+7. **Observabilidade e Logs Semânticos**:
+   - `INFO`: Apenas eventos operacionais chave (inicialização, primeiro ciclo, sumário de ciclo com alertas encontrados, publicação com sucesso).
+   - `WARNING`: Falhas parciais que admitem continuidade (fail-open de servidor, timeouts tolerados, descarte por validação).
+   - `ERROR`: Falhas críticas que impedem o ciclo de execução ou quebram a integridade do processo.
+   - O domínio e a aplicação não realizam chamadas de logging nem acessam bibliotecas de infraestrutura. Ciclos ociosos não devem emitir logs de início/fim ruidosos.
+   - Logs são gravados em stdout e em arquivo diário gerenciado em `LOG_DIR` (`logs/nagstamon-YYYY-MM-DD.log`).
+8. **Paridade Canônica de Snapshots**: O texto emitido no terminal (`stdout`) e a mensagem transmitida via webhook do Google Chat compartilham rigorosamente a mesma formatação em texto puro definida em `domain/services/alert_view.py`. Deduplicação persistente via ledger transacional (`claim` -> `confirm` -> `release`) utilizando fingerprint SHA-256 (`server`/`alertname`/`app`/`host`).
+9. **Filtros Temporais e Carência SLA**:
+   - Resolução de data/hora exclusivamente em Python sobre `starts_at` ou parse de `duration_str`.
+   - Janela comercial controlada por `WINDOW_*` (`WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` padrão para capturar incidentes ativos pré-existentes ao boot).
+   - Carência de hold-down por criticidade/severidade: Muito Crítico = 10 min (`FILTER_HOLD_FAST_SECONDS`), Mediano/Crítico = 15 min (`FILTER_HOLD_CRITICAL_SECONDS`), Baixo/Warning = 20 min (`FILTER_HOLD_WARNING_SECONDS`). Alertas com severidade `info` ou com instante de início indeterminado são sumariamente descartados.
+
+## Comandos Operacionais
 
 ```bash
+# Instalação de dependências em ambiente virtual
 make app-install
+
+# Quality gates de código e segurança
 make app-lint
+make app-security
 make app-test
+
+# Diagnóstico de conectividade contra os servidores monitorados
 make app-ping
+
+# Ciclo de vida Docker
 make docker-up
 make docker-smoke
+make docker-logs
+make docker-down
 ```
 
-## Prompt-modelo
+## Regras e Habilidades Detalhadas
 
-- [prompt-model.md](prompt-model.md) — contrato reutilizavel (DDD / hexagonal / TDD / qualidade) para colar em projetos futuros e adaptar a outra linguagem ou dominio
+- Regras arquiteturais e governança: `.agents/rules/`
+- Habilidades operacionais especializadas: `.agents/skills/`
+- Manual de arquitetura do sistema: `docs/arquitetura.md`
+- Estrutura completa de diretórios: `docs/structure.md`
+- Padrões de desenvolvimento em Python: `docs/engineering-python.md`
+- Padrões de logging e observabilidade: `docs/engineering-logging.md`
+- Engenharia de contêineres: `docs/infra-docker.md`
+- Matriz de CI/CD e automação: `docs/devops.md`
 
-## Docs de referencia
+## Escopo e Limitações
 
-- [docs/arquitetura.md](docs/arquitetura.md)
-- [docs/engineering-python.md](docs/engineering-python.md)
-- [docs/engineering-logging.md](docs/engineering-logging.md)
-- [docs/structure.md](docs/structure.md)
-- [docs/infra-docker.md](docs/infra-docker.md)
-- [docs/devops.md](docs/devops.md)
-
-## Fora de escopo
-
-- UI desktop Qt do Nagstamon original
-- Icinga / Centreon / Checkmk / Zabbix nativos
-- Encaminhamento para OTRS ou outras sinks alem de stdout e Google Chat
+- Não utilizar nem portar a interface gráfica desktop Qt do Nagstamon original.
+- Não implementar drivers para sistemas de monitoramento além de Alertmanager e Nagios CGI.
+- Não rotear alertas para ferramentas de ticketing além dos canais canônicos homologados (stdout e Google Chat).

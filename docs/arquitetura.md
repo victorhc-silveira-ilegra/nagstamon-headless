@@ -1,119 +1,144 @@
 # Arquitetura do Nagstamon Headless
 
-## Visao geral
+Este documento especifica a arquitetura técnica, as fronteiras de domínio e os padrões de projeto adotados no **Nagstamon Headless**.
 
-Daemon Python em arquitetura **hexagonal / DDD**: regras de filtragem e entidades ficam isoladas de HTTP, arquivos INI e stdout. O worker na presentation e o composition root.
+## 1. Visão Geral e Paradigma Arquitetural
 
-```text
-~/.nagstamon/servers/*.conf
-        |
-        v
-IniServerConfigAdapter
-        |
-        v
-presentation/worker  (composition root)
-        |
-        v
-PollMonitorsUseCase   (application)
-   |            |                |              |              |
-   v            v                v              v              v
-ServerConfig   MonitorClient   AlertSink   AlertDispatch   AlertSound
-Port           Port            Port        LedgerPort      Port
-                  |                |              |              |
-                  v                v              v              v
-         CompositeMonitorClient  Composite   File/InMemory    PopenAlertSound
-           |              |      AlertSink   Ledger
-           v              v        |     \
-   AlertmanagerHttp   NagiosCgiHttp |      \
-                                   v       v
-                             Stdout     GoogleChatWebhook
+O sistema é estruturado em conformidade com os princípios de **Domain-Driven Design (DDD)** e **Arquitetura Hexagonal (Ports & Adapters)**. As regras de negócio, cálculos temporais e políticas de enriquecimento de incidentes permanecem estritamente isoladas de protocolos de rede, detalhes de persistência e saídas de terminal.
+
+```mermaid
+flowchart TD
+    subgraph Presentation ["Presentation Layer (app/src/presentation)"]
+        CLI["CLI / Ping Tool (cli/ping.py)"]
+        Worker["Worker Daemon (worker/main.py)"]
+        Guard["Cycle Guard (worker/cycle_guard.py)"]
+        CompRoot["Composition Root"]
+    end
+
+    subgraph Application ["Application Layer (app/src/application)"]
+        CollectUC["CollectAndPublishAlertsUseCase"]
+        PingUC["PingMonitorsUseCase"]
+        subgraph Ports ["Application Ports"]
+            ServerPort["ServerConfigPort"]
+            MonitorPort["MonitorClientPort"]
+            LedgerPort["AlertDispatchLedgerPort"]
+            SinkPort["AlertSinkPort"]
+            SoundPort["AlertSoundPort"]
+            ClockPort["ClockPort"]
+        end
+    end
+
+    subgraph Domain ["Domain Layer (app/src/domain)"]
+        Alert["Alert Entity"]
+        ServerConf["MonitorServer Entity"]
+        Severity["Severity Value Object"]
+        FilterPolicy["AlertFilterService (SLA / Window)"]
+        HoldPolicy["AlertHoldService (Hold-Down Matrix)"]
+        AlertView["AlertViewService (Canonical Snapshot)"]
+    end
+
+    subgraph Infrastructure ["Infrastructure Layer (app/src/infrastructure)"]
+        IniAdapter["IniServerConfigAdapter"]
+        AMAdapter["AlertmanagerHttpAdapter"]
+        NagiosAdapter["NagiosCgiHttpAdapter"]
+        FileLedger["FileAlertDispatchLedger (JSON + flock)"]
+        MemLedger["InMemoryAlertDispatchLedger"]
+        StdoutSink["StdoutAlertSink"]
+        GChatSink["GoogleChatHttpAdapter"]
+        SoundAdapter["PopenAlertSoundAdapter"]
+        Settings["Settings (.env)"]
+    end
+
+    Worker --> CompRoot
+    CLI --> CompRoot
+    CompRoot --> CollectUC
+    CompRoot --> PingUC
+    CollectUC --> Ports
+    PingUC --> Ports
+    Ports -.-> Infrastructure
+    CollectUC --> Domain
 ```
 
-## Camadas
+## 2. Divisão e Responsabilidade das Camadas
 
-### Domain (`app/src/domain`)
+### 2.1 Camada de Domínio (`app/src/domain`)
 
-| Modulo | Papel |
-|--------|--------|
-| `entities/monitor_server.py` | Servidor de monitor: URL, proxy, credenciais, tipo, `enabled` |
-| `entities/alert.py` | Alerta efetivo candidato; `host`; `acknowledged`; `dedup_key()` do problema (`server`/`alertname`/`app`/`host`, sem `desc` dinamico nem `starts_at`) |
-| `entities/severity.py` | Severidade normalizada |
-| `services/alert_filter.py` | Politica de ruido (ack, hold-down, janela, dias uteis, Watchdog, Kubernetes, silenced/inhibited) |
-| `services/alert_hold.py` | Criticidade de persistencia: muito critico (10 min) / mediano (15 min) / baixo (20 min); INFO fora |
-| `services/alert_view.py` | Snapshot texto enriquecido: Status, Client, Host, Service, Ambiente, Duração no Nagstamon, Horário do envio, Início do alarme, Status information e métricas SLA/SLO (Criticidade SLA, Tempo decorrido, ID do Incidente) |
+O núcleo do sistema. Contém a lógica de negócio pura, sem dependências de frameworks, bibliotecas HTTP ou utilitários externos.
 
-O dominio **nao** loga e **nao** conhece httpx nem `.env`.
+- `entities/monitor_server.py`: Representação do servidor monitorado (URL, autenticação, tipo de monitor, estado ativo/inativo).
+- `entities/alert.py`: Entidade representativa do alarme coletado. Possui o método `dedup_key()`, gerando a assinatura canônica de unicidade SHA-256 baseada em `server` + `alertname` + `app` + `host`.
+- `entities/severity.py`: Enumeração normalizada de severidades operacionais.
+- `services/alert_filter.py`: Orquestrador de descarte de ruído, avaliando confirmação prévia (ack), janelas temporais de turno, dias úteis configurados e integridade de timestamps.
+- `services/alert_hold.py`: Matriz de carência temporal (hold-down) por criticidade e severidade.
+- `services/alert_view.py`: Serviço de projeção canônica do snapshot em texto puro, calculando duração, tempo de SLA decorrido e identificadores estáveis.
 
-### Application (`app/src/application`)
+*Invariante*: O domínio nunca emite chamadas de log e desconhece qualquer detalhe de IO.
 
-| Modulo | Papel |
-|--------|--------|
-| `ports/server_config.py` | `list_enabled()` / `list_all()` / `set_enabled(name, enabled)` |
-| `ports/monitor_client.py` | `fetch_all(servers)` |
-| `ports/monitor_probe.py` | `probe(server) -> bool` (HTTP 2xx) |
-| `ports/alert_sink.py` | `publish(alerts, fetched_at=...)` (stdout e Google Chat) |
-| `ports/clock.py` | Relogio injetavel |
-| `ports/alert_dispatch_ledger.py` | `try_claim` / `confirm` / `release` (dedup persistente) |
-| `ports/alert_sound.py` | `play_new_alert()` apos publish de alerta claimed |
-| `use_cases/poll_monitors.py` | Um ciclo: fetch → filtro → unique → claim/publish/confirm por alerta → som |
-| `use_cases/ping_monitors.py` | One-shot: `list_all` → probe paralelo → `set_enabled` conforme 2xx |
+### 2.2 Camada de Aplicação (`app/src/application`)
 
-O use case **nao** loga. Paralelismo HTTP fica no adapter composto (poll) ou no use case de ping.
+Orquestra os fluxos de trabalho do sistema, coordenando entidades e portas abstratas.
 
-### Infrastructure (`app/src/infrastructure`)
+- `ports/server_config.py`: Contrato para carregamento e persistência do estado dos servidores (`list_enabled`, `list_all`, `set_enabled`).
+- `ports/monitor_client.py`: Contrato para consulta paralela aos servidores (`fetch_all`).
+- `ports/alert_dispatch_ledger.py`: Contrato transacional de deduplicação (`try_claim`, `confirm`, `release`).
+- `ports/alert_sink.py`: Contrato de publicação de snapshots (`publish`).
+- `ports/alert_sound.py`: Contrato de feedback sonoro (`play_new_alert`).
+- `ports/clock.py`: Contrato de abstração temporal para testes determinísticos.
+- `use_cases/poll_monitors.py`: Caso de uso principal: executa ciclo de coleta, normalização, filtragem, deduplicação em ledger, publicação multicanal e disparo de áudio.
+- `use_cases/ping_monitors.py`: Caso de uso de diagnóstico: executa probe HTTP paralelo e atualiza flags de ativação nos arquivos de configuração.
 
-| Modulo | Papel |
-|--------|--------|
-| `config/settings.py` | `Settings.from_env()` |
-| `config/dotenv_loader.py` | Carrega `.env` da raiz |
-| `adapters/ini_server_config.py` | Parser INI estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled` (so a linha `enabled=`); desofusca username/password |
-| `adapters/alertmanager_http.py` | GET `/api/v2/alerts` via httpx |
-| `adapters/nagios_cgi_http.py` | GET CGI HTML (tabelas aninhadas); host/service/duracao/ack |
-| `adapters/http_monitor_probe.py` | Probe HTTP autenticado (AM/Nagios); tipos fora de escopo = False |
-| `adapters/composite_monitor_client.py` | Roteia AM vs Nagios em ThreadPoolExecutor |
-| `adapters/stdout_alert_sink.py` | Snapshot de alertas efetivos no stdout (fuso injetado) |
-| `adapters/google_chat_http.py` | POST da mesma mensagem `text` no webhook; loga `poll.gchat.failed` e raises para o use case dar release |
-| `adapters/composite_alert_sink.py` | Encadeia stdout e Google Chat no mesmo `publish` |
-| `adapters/in_memory_alert_dispatch_ledger.py` | Dedup com `threading.Lock` quando `DEDUP_LEDGER_PATH` vazio |
-| `adapters/file_alert_dispatch_ledger.py` | JSON + `fcntl.flock`; pending/sent; sobrevive a restart |
-| `adapters/popen_alert_sound.py` | Beep WAV via `paplay`/`aplay`; fail-open (`poll.sound.failed`) |
-| `logging/*` | `log_event`, eventos, redact |
+### 2.3 Camada de Infraestrutura (`app/src/infrastructure`)
 
-Falha de IO por servidor e fail-open: lista vazia + `monitor.fetch.failed` (WARNING).
-Falha do player de som e fail-open: `poll.sound.failed` (WARNING); o ciclo segue.
-Falha do Google Chat: `poll.gchat.failed` (WARNING), o use case libera o fingerprint e o ciclo segue.
-Boot: `worker.started`; config invalida: `worker.boot.failed` (ERROR).
-Overlap de ciclo: `poll.cycle.skipped_in_flight` (WARNING).
+Implementa as portas da aplicação utilizando bibliotecas e protocolos específicos.
 
-### Presentation (`app/src/presentation`)
+- `adapters/ini_server_config.py`: Leitor e gravador de arquivos `.conf` no formato INI do Nagstamon, com algoritmo de desofuscação de credenciais.
+- `adapters/alertmanager_http.py`: Cliente HTTP para API v2 do Prometheus Alertmanager.
+- `adapters/nagios_cgi_http.py`: Parser resiliente de tabelas HTML expostas por interfaces CGI do Nagios.
+- `adapters/file_alert_dispatch_ledger.py`: Ledger persistente em disco (JSON) com travamento concorrente via `fcntl.flock`.
+- `adapters/in_memory_alert_dispatch_ledger.py`: Ledger em memória com `threading.Lock` para ambientes efêmeros.
+- `adapters/stdout_alert_sink.py`: Projeção do snapshot formatado no fluxo padrão do terminal.
+- `adapters/google_chat_http.py`: Disparo da mensagem em formato texto para o webhook configurado do Google Chat.
+- `adapters/popen_alert_sound.py`: Reprodução de alerta sonoro via subsistema de áudio local (`paplay` / `aplay`).
+- `config/settings.py`: Mapeamento tipado de variáveis de ambiente.
 
-| Modulo | Papel |
-|--------|--------|
-| `worker/main.py` | Composition root + loop do daemon |
-| `worker/cycle_guard.py` | Trava in-flight: um ciclo por vez no processo |
-| `cli/ping.py` | Composition root one-shot: probe HTTP e grava `enabled` (`HOST_SERVERS_DIR` se existir) |
-| `logging/*` | Setup root logger (`text` / `json`), tee diario em `LOG_DIR`, silence httpx |
+### 2.4 Camada de Apresentação (`app/src/presentation`)
 
-CLI do daemon: `--max-cycles` (opcional; omitido = loop infinito). Ping: `make app-ping` / `nagstamon-headless-ping` (sem args).
+Pontos de entrada da aplicação e composição do ciclo de vida.
 
-## Config
+- `worker/main.py`: Ponto de entrada do serviço daemon e composition root principal.
+- `worker/cycle_guard.py`: Mecanismo anti-overlap que impede a execução de ciclos concorrentes no mesmo processo.
+- `cli/ping.py`: Utilitário de linha de comando para probe pontual de servidores.
+- `logging/`: Configuração de formatadores, filtros de redução de ruído e gravação contínua em arquivo diário.
 
-Variaveis no `.env` da raiz. Testes isolam com `NAGSTAMON_DISABLE_DOTENV=1`.
+## 3. Políticas de Negócio Detalhadas
 
-Dedup: `DEDUP_ENABLED` (default true), `DEDUP_WINDOW_MINUTES` (default 30; janela de retencao pos-resolucao) e `DEDUP_LEDGER_PATH` (vazio = memoria; arquivo JSON com flock). O mesmo alerta/problema (server/alertname/app/host) e emitido uma vez enquanto continuar ativo nos monitores, mesmo que a descricao ou metricas dinamicas (KB de memoria, latencia HTTP, duracao) variem nos ciclos subsequentes. Quando o incidente some dos monitores e passa `DEDUP_WINDOW_MINUTES`, `reconcile_active` remove o fingerprint do ledger para permitir novo alerta caso o problema volte a ocorrer no futuro. `DEDUP_ENABLED=false` republica o snapshot a cada ciclo.
+### 3.1 Carência Temporal por Criticidade (Hold-Down)
 
-Filtros de janela: `WINDOW_ENABLED` (default true), `WINDOW_START` (default `13:30`), `WINDOW_END` (default `18:00`), `WINDOW_DAYS` (default `mon,tue,wed,thu,fri`; aceita `seg..dom` ou `0..6`), `WINDOW_TIMEZONE` (default `America/Sao_Paulo`), `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (default true no turno da manha `WINDOW_START < 12:00`, false na tarde) e `FILTER_DURATION_MAX_SECONDS` (default 86400). Inclusivo nos extremos da janela. Com a janela ligada, `now` precisa estar no horario **e** em um dia util configurado; se o inicio do alerta for conhecido, precisa cair no mesmo intervalo hoje ou antes dele quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true` (permitindo que alertas ativos iniciados na madrugada ou antes do boot sejam despachados no primeiro ciclo da manha). `WINDOW_ENABLED=false` ignora horario e dia. Sem inicio conhecido ou INFO: nao dispara. Duracao e horario sao calculados em Python.
+Para evitar reações a alarmes oscilantes ou transitórios (flapping), a matriz de carência impõe o tempo mínimo de persistência ativa do alarme antes do envio:
 
-Hold-down por criticidade (tipo ganha de severidade; keywords so em alertname/desc/status, nao no host):
+| Criticidade | Escopo de Aplicação | Variável de Ambiente | Duração Padrão |
+| :--- | :--- | :--- | :--- |
+| **Muito Crítico** | Hosts inacessíveis (DOWN), esgotamento de disco, certificados TLS expirados, falhas de pagamento ou autenticação | `FILTER_HOLD_FAST_SECONDS` | 10 minutos (600s) |
+| **Mediano** | Demais ocorrências com severidade `CRITICAL` | `FILTER_HOLD_CRITICAL_SECONDS` | 15 minutos (900s) |
+| **Baixo** | Ocorrências com severidade `WARNING`, métricas de CPU, memória, load, latência e oscilações | `FILTER_HOLD_WARNING_SECONDS` | 20 minutos (1200s) |
+| **Informativo** | Ocorrências com severidade `INFO` ou sem início determinável | N/A | Descarte imediato |
 
-| Criticidade | Quem | Env | Default |
-|-------------|------|-----|---------|
-| Muito critico | DOWN/unreachable, disco/filesystem, cert/TLS, pagamento/login | `FILTER_HOLD_FAST_SECONDS` | 600 (10 min) |
-| Mediano | CRITICAL restante | `FILTER_HOLD_CRITICAL_SECONDS` | 900 (15 min) |
-| Baixo | WARNING restante e CPU/mem/load/fila/lock/ping/latencia/flap | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
+*Nota*: Palavras-chave semânticas no nome do alerta ou serviço sobrepõem a severidade declarada.
 
-Som: `SOUND_ENABLED` (default true). Toca apos `confirm` de pelo menos um alerta (ou lista nao vazia com dedup off). Compose forca `false` (container sem Pulse).
+### 3.2 Janela Operacional e Preservação de Incidentes Ativos
 
-Google Chat: `GCHAT_WEBHOOK_URL` (vazio = desligado). Com ledger, um alerta claimed por `publish([alert])`; o mesmo texto do stdout vai ao webhook como mensagem `{"text": ...}` (sem cards estruturados do Chat e sem fence monoespaçado). Falha loga e raises; o use case libera o fingerprint. Token fica so no `.env` local; logs redigem a query.
+A janela operacional restringe o envio às jornadas de trabalho:
+- `WINDOW_ENABLED`: Habilita ou ignora a validação de horários.
+- `WINDOW_START` e `WINDOW_END`: Limites da jornada (ex.: `13:30` às `18:00`).
+- `WINDOW_DAYS`: Dias da semana autorizados (ex.: `mon,tue,wed,thu,fri`).
+- `WINDOW_ALLOW_PAST_ACTIVE_ALERTS`: Quando ativo (padrão `true` para turnos matutinos), incidentes cujo início tenha ocorrido antes da abertura da janela (ex.: durante a madrugada ou prévios à inicialização do daemon) são despachados normalmente no primeiro ciclo de coleta, impedindo que falhas graves fiquem invisíveis.
 
-Arquivo diario: `LOG_DIR` (default `logs`; vazio desliga). O worker faz tee de stdout/stderr para `LOG_DIR/nagstamon-YYYY-MM-DD.log` no fuso `WINDOW_TIMEZONE`, com o mesmo recorte do `make docker-logs` (INFO + snapshot). No Docker o volume `logs/` do host aponta para `/var/log/nagstamon-headless`. `make app-clean` apaga em `logs/` o que nao for o arquivo do dia atual nem `.gitkeep`. `LOG_FILE` continua opcional para um arquivo extra so de eventos semanticos.
+### 3.3 Protocolo de Ledger de Deduplicação
+
+Para assegurar idempotência sem reenvio ruidoso a cada minuto:
+1. **Identificador Imutável**: Hash SHA-256 de `server` + `alertname` + `app` + `host`. Atributos dinâmicos (consumo percentual, tempo decorrido, descrição volátil) não compõem a chave.
+2. **Ciclo de Estados**:
+   - `claim`: Verifica se a chave já consta como despachada (`sent`). Se não constar, assume propriedade temporária do envio.
+   - `confirm`: Registra a chave como confirmada no disco após sucesso na publicação. O registro permanece ativo indefinidamente enquanto o problema persistir nos monitores.
+   - `release`: Em caso de falha de transmissão (ex.: timeout no Google Chat), a chave é liberada para nova tentativa no próximo ciclo.
+   - `reconcile`: Quando o incidente deixa de ser reportado pelo monitor e decorre o tempo de retenção (`DEDUP_WINDOW_MINUTES`), a entrada é purgada do ledger.

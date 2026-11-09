@@ -1,36 +1,56 @@
-# Infra Docker
+# Engenharia de Infraestrutura e Contêineres
 
-Stack minima para rodar o daemon headless. Nao inclui monitores (Alertmanager/Nagios): eles sao alcancados via rede do host e proxy.
+Especificações técnicas de empacotamento, orquestração e execução do **Nagstamon Headless** em contêineres Docker.
 
-## Servico
+## 1. Topologia de Execução e Rede
 
-- Imagem: `nagstamon-headless:local` (Python 3.11, pacote `nagstamon-headless`)
-- `network_mode: host` para usar o proxy e rotas locais
-- Volume somente leitura: `${HOST_SERVERS_DIR:-~/.nagstamon/servers}` → `/etc/nagstamon/servers`
-- Volume do ledger: `../../data` → `/var/lib/nagstamon-headless` (`DEDUP_LEDGER_PATH`)
-- Volume dos logs diarios: `../../logs` → `/var/log/nagstamon-headless` (`LOG_DIR`); o arquivo `nagstamon-YYYY-MM-DD.log` e atualizado no host a cada escrita
-- `SERVERS_DIR=/etc/nagstamon/servers` dentro do container
-- `SOUND_ENABLED=false` no compose (container sem dispositivo de audio)
+O contêiner do Nagstamon Headless opera intencionalmente em modo de rede do host (`network_mode: host`):
 
-## Comandos
+- **Roteamento Corporativo Transparente**: Permite ao daemon utilizar diretamente os túneis de VPN ativos na estação de trabalho (`fctvpn*`, `tun*`, `wireguard`), sem necessidade de configurar clientes VPN ou certificados adicionais no interior do contêiner.
+- **Resolução de Proxy e DNS Interno**: O daemon herda a tabela de rotas do sistema hospedeiro, garantindo alcance aos proxies HTTP corporativos e serviços em faixas privadas (RFC 1918) sem NAT duplicado.
+- **Princípio do Menor Privilégio**: O contêiner não executa como `root`. A imagem final opera com usuário não-privilegiado dedicado, garantindo conformidade com padrões de segurança em tempo de execução.
+
+## 2. Estrutura de Volumes e Persistência
+
+O arquivo de composição `infra/docker/docker-compose.yml` mapeia 3 pontos essenciais de persistência:
+
+| Volume no Host | Ponto de Montagem no Contêiner | Permissão | Finalidade |
+| :--- | :--- | :--- | :--- |
+| `${HOST_SERVERS_DIR:-~/.nagstamon/servers}` | `/etc/nagstamon/servers` | Somente Leitura (`ro`) | Ingestão das configurações de servidores `.conf` |
+| `data/` | `/var/lib/nagstamon-headless` | Leitura e Escrita (`rw`) | Persistência do ledger JSON de deduplicação |
+| `logs/` | `/var/log/nagstamon-headless` | Leitura e Escrita (`rw`) | Gravação em tempo real do arquivo diário `nagstamon-YYYY-MM-DD.log` |
+
+*Nota de Áudio*: Em contêiner Docker, a variável `SOUND_ENABLED` é forçada para `false`, uma vez que servidores e contêineres headless não contam com dispositivo físico de saída de áudio PulseAudio/ALSA.
+
+## 3. Especificação do Dockerfile Multi-Stage
+
+A compilação do contêiner adota padrão multi-stage (`infra/docker/Dockerfile`):
+1. **Stage de Build (`builder`)**: Base Python 3.11 Slim instalando ferramentas de compilação, compilando dependências C (`wheel`) e instalando o pacote Python em diretório isolado.
+2. **Stage Final (`runtime`)**: Imagem limpa contendo apenas o runtime essencial do Python e as dependências compiladas transferidas do builder. Todos os compiladores, cabeçalhos de desenvolvimento e arquivos transitórios são excluídos da imagem final.
+
+## 4. Comandos e Ciclo de Vida Operacional
 
 ```bash
-cp .env.example .env
+# Inicialização do serviço em segundo plano
 make docker-up
+
+# Teste smoke funcional de ponta a ponta
 make docker-smoke
+
+# Visualização de logs consolidados em tempo real
 make docker-logs
+
+# Exibição do status do contêiner
 make docker-ps
+
+# Parada e desmontagem do serviço
 make docker-down
 ```
 
-`make docker-smoke` exige `.env` real (`PROXY_ADDR`, `VPN_IFACE`, `HOST_SERVERS_DIR`). Confere se a VPN esta UP, se a rota do proxy passa pela iface VPN e se o proxy aceita TCP; depois constroi a imagem e dispara um `docker run` one-shot (`nagstamon-headless-smoke`, `--max-cycles 1`, `--network host`) **sem** usar o `container_name` do daemon. Monta o mesmo `data/` e `logs/` do daemon (`DEDUP_LEDGER_PATH` compartilhado + flock; `LOG_DIR` diario no host). Pode rodar com `make docker-up` ja no ar. Exige `worker.started` / `poll.cycle.started` / `poll.cycle.finished`, `servers_count>=1` e que nem todos os fetches falhem. Timeout de 300s. Script: [`infra/docker/smoke.sh`](../infra/docker/smoke.sh).
+### Protocolo do Teste Smoke (`smoke.sh`)
 
-`make docker-logs` segue o stdout do daemon (snapshot + eventos INFO), sem prefixo do servico e sem `--timestamps` do Compose. `F=0` imprime o tail e sai; `LEVEL=all` inclui WARNING/ERROR; `T=1` liga o relogio do Docker; `P=1` devolve o prefixo `nagstamon-headless |`.
-
-O IP/URL do proxy vai em `PROXY_ADDR` no `.env` local, nunca no compose versionado. VPN (iface/endereco) tambem fica so no `.env` local (`VPN_IFACE`, `VPN_ADDR`).
-
-## Arquivos
-
-- [`infra/docker/Dockerfile`](../infra/docker/Dockerfile)
-- [`infra/docker/docker-compose.yml`](../infra/docker/docker-compose.yml)
-- [`infra/docker/smoke.sh`](../infra/docker/smoke.sh)
+O comando `make docker-smoke` executa validação rigorosa de ponta a ponta:
+1. Verifica se a interface de VPN configurada está ativa no host.
+2. Valida se a rota até o proxy corporativo está estabelecida.
+3. Inicia um contêiner efêmero com limite de um ciclo (`--max-cycles 1`).
+4. Assegura que o ciclo conclui com sucesso (`poll.cycle.finished`), confirmando conectividade contra os servidores reais sem quebras de execução.

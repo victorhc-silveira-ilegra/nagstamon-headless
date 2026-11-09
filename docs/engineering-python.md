@@ -1,112 +1,76 @@
-# Engenharia Python
+# Engenharia de Software em Python
 
-Guia de engenharia do daemon `nagstamon-headless` (camadas, qualidade, config e runtime).
+Diretrizes formais de engenharia de software para o daemon **Nagstamon Headless** cobrindo padrões arquiteturais, tipagem estrita, gestão de ciclo de vida e garantias de qualidade.
 
-## Objetivos
+## 1. Princípios de Engenharia e Boas Práticas
 
-- Hexagonal / DDD com cobertura 100%
-- Composition root no worker (daemon) e em `presentation/cli/ping` (one-shot)
-- Logging semantico enxuto (ver [engineering-logging.md](engineering-logging.md))
-- Config centralizada no `.env` da raiz
-- Sem comentarios no codigo de aplicacao
+1. **Ausência de Comentários no Código**: O código-fonte em Python não deve conter comentários explicativos nem docstrings genéricas. A clareza decorre de nomenclatura expressiva, granularidade adequada de funções e contratos estritos.
+2. **Tipagem Estrita (`mypy --strict`)**: Todas as assinaturas de funções, métodos e atributos de classe possuem anotações de tipo explícitas. Tipos genéricos como `Any` ou casts inseguros são sumariamente rejeitados.
+3. **Imutabilidade e Encapsulamento**: Estruturas de dados são representadas prioritariamente por `dataclasses` congeladas (`frozen=True`) ou NamedTuples quando aplicável.
+4. **Isolamento de Efeitos Colaterais**: Operações de entrada/saída (I/O), resolução de relógio do sistema e acessos a rede residem exclusivamente em adaptadores da camada de infraestrutura.
 
-## Fluxo de runtime
+## 2. Portas e Adaptadores (Ports & Adapters)
 
-1. Worker parseia `--max-cycles` (opcional)
-2. `Settings.from_env()` carrega `.env` (salvo `NAGSTAMON_DISABLE_DOTENV`); falha emite `worker.boot.failed`
-3. Tee de stdout/stderr para `LOG_DIR` (arquivo do dia), setup de logging (`LOG_LEVEL` / `LOG_FORMAT` / `LOG_FILE`) e `worker.started`
-4. `CycleGuard.try_enter()`; se ocupado emite `poll.cycle.skipped_in_flight` (WARNING)
-5. Emite `poll.cycle.started` no primeiro ciclo
-6. `PollMonitorsUseCase.execute()`: config → fetch → filtro → claim/publish/confirm por alerta (stdout + Google Chat) → som (se claimed)
-7. Worker emite `monitor.config.empty` (uma vez, se `servers_count=0`) e `poll.cycle.finished` (primeiro ciclo, ou se houver claimed; com `duration_ms` e `skipped_duplicate_count`) ou `poll.cycle.failed`
-8. Sleep `REFRESH_INTERVAL_SECONDS` e repete
+Na camada de aplicação, todas as dependências externas são modeladas como protocolos puros (`typing.Protocol`), sem herança de classes base abstratas (ABCs) pesadas:
 
-## Ports e adapters
+| Porta (Application) | Adaptador Concreto (Infrastructure) | Finalidade Operacional |
+| :--- | :--- | :--- |
+| `ServerConfigPort` | `IniServerConfigAdapter` | Leitura e atualização de arquivos de servidor `.conf` estilo Nagstamon |
+| `MonitorClientPort` | `CompositeMonitorClient` | Polling paralelo a múltiplos servidores com balanceamento assíncrono |
+| `MonitorProbePort` | `HttpMonitorProbeAdapter` | Validação de conectividade HTTP (2xx) para comandos de ping |
+| `AlertSinkPort` | `StdoutAlertSink` / `GoogleChatHttpAdapter` | Publicação unificada de snapshots em terminal e chat |
+| `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | Gestão de deduplicação transacional persistente |
+| `AlertSoundPort` | `PopenAlertSoundAdapter` | Disparo não-bloqueante de alertas sonoros locais |
+| `ClockPort` | `SystemClock` | Abstração do relógio do sistema para garantia de testes determinísticos |
 
-| Port | Adapter | Notas |
-|------|---------|--------|
-| `ServerConfigPort` | `IniServerConfigAdapter` | `*.conf` estilo Nagstamon; `list_enabled` / `list_all` / `set_enabled`; suporte a `use_proxy=False`; username/password desofuscados |
-| `MonitorClientPort` | `CompositeMonitorClient` | httpx com resolucao DNS local em proxy; fail-open por servidor |
-| `MonitorProbePort` | `HttpMonitorProbeAdapter` | stream GET AM `/api/v2/alerts` ou Nagios CGI; 2xx = reachable; Zabbix/Icinga/Centreon/Checkmk = False |
-| `AlertSinkPort` | `StdoutAlertSink` + `GoogleChatWebhookSink` via `CompositeAlertSink` | mesmo snapshot texto no stdout e no webhook (`{"text": ...}`); Chat raises apos log para o ledger dar release |
-| `ClockPort` | `SystemClock` | UTC |
-| `AlertDispatchLedgerPort` | `FileAlertDispatchLedger` / `InMemoryAlertDispatchLedger` | `try_claim` / `confirm` / `release`; dedup por problema (`server`/`alertname`/`app`/`host`); arquivo com flock se `DEDUP_LEDGER_PATH` |
-| `AlertSoundPort` | `PopenAlertSound` | WAV 440 Hz; `paplay`/`aplay`; fail-open |
+## 3. Serviços de Domínio e Políticas
 
-Ports sao `typing.Protocol` (sem ABC).
+### 3.1 Classificação de Carência (Hold-Down Matrix)
 
-## Domain services
+O serviço `AlertHoldService` (`domain/services/alert_hold.py`) determina a latência mínima de disparo com base na severidade e semântica do incidente:
 
-`hold_seconds` (`domain/services/alert_hold.py`): classifica criticidade de persistencia (keywords em alertname/desc/status, nao no host). Tipo ganha de severidade.
+| Criticidade | Padrões de Alarme Reconhecidos | Carência Padrão |
+| :--- | :--- | :--- |
+| **Muito Crítico** | Hosts DOWN, partições cheias (`Disk Root`, `All disks`), certificados TLS expirando, falhas críticas de infraestrutura e serviços bancários | 10 min (`FILTER_HOLD_FAST_SECONDS=600`) |
+| **Mediano** | Demais ocorrências classificadas como `CRITICAL` | 15 min (`FILTER_HOLD_CRITICAL_SECONDS=900`) |
+| **Baixo** | Ocorrências com severidade `WARNING`, métricas oscilantes de CPU, memória, latência de rede e saturação de fila | 20 min (`FILTER_HOLD_WARNING_SECONDS=1200`) |
+| **Informativo** | Ocorrências `INFO` ou sem início conhecido | Descarte imediato |
 
-| Criticidade | Quem | Env | Default |
-|-------------|------|-----|---------|
-| Muito critico | DOWN/unreachable, canais bancários/PIX/BCB/Celcoin, MQ stopped, connection refused/socket timeout, CrashLoopBackOff, OOMKilled, error budget, NodeNotReady, FailedMount, etcd quorum, disco/filesystem/tablespace/redo log, cert/TLS, login/SSO | `FILTER_HOLD_FAST_SECONDS` | 600 (10 min) |
-| Mediano | CRITICAL restante | `FILTER_HOLD_CRITICAL_SECONDS` | 900 (15 min) |
-| Baixo | WARNING e CPU/mem/load/fila/throttling/latência/lock/ping/flap | `FILTER_HOLD_WARNING_SECONDS` | 1200 (20 min) |
+### 3.2 Filtragem de Ruído (`AlertFilterService`)
 
-`AlertFilterPolicy` (janela, dias uteis, fuso e holds injetados pelo worker a partir do `.env`):
+O serviço de filtragem descarta automaticamente:
+- Alertas já reconhecidos no monitor (`acknowledged=True` ou silenciados por `silenced_by`).
+- Alarmes com início indeterminado ou anterior à janela estipulada (salvo quando `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true`).
+- Ruídos transitórios e probes de debug de legado.
+- Alertas de infraestrutura interna do Kubernetes sem impacto em disponibilidade ou SLOs de produção.
 
-- `acknowledged=True` (Nagios); no Alertmanager, `silenced_by` equivale a ack
-- duracao so em Python: hold-down acima ate &lt; `FILTER_DURATION_MAX_SECONDS` (86400) via `starts_at` ou parse de `duration_str`; INFO e sem inicio conhecido nao disparam
-- janela diaria `[WINDOW_START, WINDOW_END]` em `WINDOW_TIMEZONE` e em `WINDOW_DAYS` (default seg–sex), quando `WINDOW_ENABLED=true`: `now` no intervalo **e** o inicio conhecido no mesmo intervalo hoje (ou antes da janela se `WINDOW_ALLOW_PAST_ACTIVE_ALERTS=true`, default no turno da manha)
-- inicio conhecido anterior ao boot do daemon (`not_before` no composition root): no modo sem janela (`WINDOW_ENABLED=false`), nao entra no snapshot efetivo; com `WINDOW_ENABLED=true`, o corte do turno (`WINDOW_START` + ledger) governa para nao perder alertas nascidos no turno antes de um restart
-- texto de erro de conexao / URL invalida
-- Watchdog / InfoInhibitor / ExampleAlert
-- Alertas operacionais liberados (com tratativa historica): `ROOT MAIL BOX`, `CHECK TABELAS SEM ESTATISTICAS`, `DBA - CHECK REPLICACAO`, `App Java Heap`, `PUPPET-AGENT`, `All disks` / `Disk Root`, `App health` / `CCS` / `JUD`, `Internal Server Error`, `Lock de Banco`, `Check Sync NTP`, `TargetDown`
-- Ruídos de legado silenciados em `WARNING`: probes de `DEBUG` (`APP ... DEBUG`) e objetos descompilados sem impacto imediato (`CHECK OBJETOS INVALIDOS`)
-- Kubernetes: alertas essenciais das 4 camadas SRE/DevOps são liberados (SLO burn rate, RED metrics, ingress/mesh, CrashLoopBackOff, OOMKilled, deployment mismatch, pod pending, HPA, jobs/cronjobs, node conditions, CPU throttling excessivo, headroom/overcommit N+1, saturação de PVC e failed mounts, autoscaling, etcd, CoreDNS, Kube-API, certs TLS < 30d, admission webhooks); falsos positivos são silenciados (sensor Falcon `falcon-*`, `KubeletServerCertificateExpiration`, `AltoConsumodeCPUPod` e ruídos genéricos de k8s sem impacto SRE); alertas CRITICAL nunca são silenciados
-- states suppressed/pending/unprocessed e silenced/inhibited
+### 3.3 Projeção Canônica (`AlertViewService`)
 
-`AlertView` (`domain/services/alert_view.py`): snapshot operacional em texto (CRITICAL primeiro). Formato limpo chave-valor (`*Campo:* Valor`) com labels em `*negrito*` (markdown do Chat), sem espaçamento artificial de colunas. Campos: Status (`severity`), Client (`server`), Host (`host` ou `app`), Service (`alertname`), Ambiente (`environment` ou inferido), Duração no Nagstamon (`duration_str` ou `starts_at`), Horário do envio (`HH:MM:SS (DD/MM/YYYY)`), Início do alarme (`HH:MM:SS (DD/MM/YYYY)`), Status information (`status_text` ou `desc`), Criticidade SLA (Carência 10m/15m/20m), Tempo decorrido (SLA) (em minutos, ex.: `55m`), ID do Incidente (SLA) (`server/service/host`). Placeholder `N/A` / vazio vira `--`. Google Chat e logs diários recebem o mesmo texto formatado, sem card estruturado e sem fence monoespaçado.
-
-## Qualidade
-
-| Comando | O que roda |
-|---------|------------|
-| `make app-lint` | Lint de tudo: Python, Docker, GitHub e Scripts |
-| `make app-security` | Seguranca de tudo: Python, Docker, GitHub e Scripts |
-| `make app-test` / `make app-tests` | Testes de tudo: Python (cov 100%), Docker, GitHub e Scripts |
-| `make app-validate` | Validate de tudo: Python, Docker, GitHub e Scripts |
-| `make app-build` | Build de tudo: Python, Docker, GitHub e Scripts |
-| `make app-pre-commit-run` | hooks em todos os arquivos (matriz CI, `fail_fast`; requer git) |
-
-CI (GitHub Actions): [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — matriz por area (Python/Docker/GitHub/Scripts) crash-first; `release` com semantic-release em `main`. Detalhes: [devops.md](devops.md).
-
-Orquestrador: `app/scripts/operations/clean_workspace.py --area <area> --stage <stage>`.
-
-Convencoes:
-
-- Conventional Commits (`linters/commitlint.config.mjs`)
-- Sem emojis em codigo / logs / docs tecnicas
-- Sem comentarios no codigo Python de `app/src`
-
-## Testes
+O formatador unificado `AlertViewService` projeta o alarme no padrão canônico de pares chave-valor em markdown limpo, sem caracteres de controle não padronizados:
 
 ```text
-app/tests/
-├── unit/domain/
-├── unit/application/
-├── unit/infrastructure/
-├── unit/presentation/
-└── integration/infrastructure/
+*Status:* CRITICAL
+*Client:* inbursa-alertmanager-mip-prd
+*Host:* app-servicos-prd-01
+*Service:* HighErrorRate5xx
+*Ambiente:* PRD
+*Duração no Nagstamon:* 18m
+*Horário do envio:* 09/11/2026 15:30:00
+*Início do alarme:* 09/11/2026 15:12:00
+*Status information:* HTTP 5xx rate exceeded 5% threshold over 5m window
+*Criticidade SLA:* Muito Crítico (10m)
+*Tempo decorrido (SLA):* 8m
+*ID do Incidente (SLA):* inbursa-alertmanager-mip-prd/HighErrorRate5xx/app-servicos-prd-01
 ```
 
-`conftest.py` define `NAGSTAMON_DISABLE_DOTENV=1` para isolar testes do `.env` local.
+## 4. Estratégia de Testes e Qualidade
 
-Fakes/Mocks: fakes dos ports, `httpx.BaseTransport`, sleeper injetavel no worker.
+- **Cobertura Integral (100% Branch Coverage)**: A suíte executada via `pytest --cov` audita todas as linhas e caminhos condicionais. Nenhum código entra em produção sem teste unitário correspondente.
+- **Isolamento de Ambiente**: Os testes configuram `NAGSTAMON_DISABLE_DOTENV=1`, garantindo que variáveis da máquina do desenvolvedor não interfiram nos resultados.
+- **Transposição de IO**: Chamadas de rede utilizam `httpx.MockTransport` para emulação determinística de códigos HTTP e payloads heterogêneos.
 
-## Config e segredos
+## 5. Entrypoints e Execução
 
-- `.env` na raiz (nao versionado); template em `.env.example`
-- Compose: `docker compose --env-file .env ...`
-- Python: `load_project_dotenv(override=True)` em `Settings.from_env()`
-- Nunca commitar proxy interno real nem senhas dos `.conf`
-- `WINDOW_ENABLED` (default true), `WINDOW_START` / `WINDOW_END` (`HH:MM`), `WINDOW_DAYS` (`mon,tue,wed,thu,fri`), `WINDOW_TIMEZONE` (IANA), `WINDOW_ALLOW_PAST_ACTIVE_ALERTS` (default true se manha `WINDOW_START < 12:00`), `FILTER_HOLD_FAST_SECONDS` (600), `FILTER_HOLD_CRITICAL_SECONDS` (900), `FILTER_HOLD_WARNING_SECONDS` (1200), `FILTER_DURATION_MAX_SECONDS`, `SOUND_ENABLED` (default true; compose forca `false`), `GCHAT_WEBHOOK_URL` (vazio = desligado; so no `.env` local), `DEDUP_LEDGER_PATH` (vazio = memoria).
-
-## Entrypoints
-
-- Local: `make app-run` / `python run.py`
-- Console script: `nagstamon-headless`
-- Ping: `make app-ping` / `nagstamon-headless-ping` (probe HTTP + grava `enabled`; usa `HOST_SERVERS_DIR` se o diretorio existir)
-- Docker: `make docker-up` (CMD `nagstamon-headless`); `make docker-smoke` (1 ciclo real via VPN/proxy e `*.conf`)
+- **Worker de Produção**: `presentation/worker/main.py` (executado por `make app-run` ou binário de console `nagstamon-headless`).
+- **Utilitário de Ping**: `presentation/cli/ping.py` (executado por `make app-ping` ou binário `nagstamon-headless-ping`).
+- **Execução em Contêiner**: Inicializado via `make docker-up` com monitoramento via `make docker-logs`.
