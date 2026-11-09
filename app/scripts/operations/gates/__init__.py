@@ -5,7 +5,7 @@ from collections.abc import Callable
 from operations.gates import docker_area, github_area, python_area, scripts_area
 
 AREAS = ("python", "docker", "github", "scripts")
-STAGES = ("lint", "security", "test", "validate", "build", "clean", "pytest")
+STAGES = ("lint", "security", "test", "validate", "build", "clean", "pytest", "pipeline")
 
 _DISPATCH: dict[str, dict[str, Callable[..., None]]] = {
     "python": {

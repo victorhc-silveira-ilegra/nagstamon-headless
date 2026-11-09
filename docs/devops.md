@@ -8,6 +8,8 @@ O pipeline executado em pushes e pull requests na branch `main` adota execução
 
 ```mermaid
 flowchart TD
+    CL["Gatekeeper: Commitlint\n(Validação de Conventional Commits)"]
+    
     subgraph Matrix ["CI Paralelo por Área (clean_workspace.py)"]
         PY["Área Python\n(Lint, Sec, Test, Val, Build)"]
         DK["Área Docker\n(Lint, Sec, Val, Build)"]
@@ -21,6 +23,10 @@ flowchart TD
         SUM["Resumo do Pipeline\n(GitHub Step Summary)"]
     end
 
+    CL --> PY
+    CL --> DK
+    CL --> GH
+    CL --> SH
     PY --> REL
     DK --> REL
     GH --> REL
@@ -40,13 +46,16 @@ A validação de software segue a estratégia *fail-fast* (crash-first) em 5 est
 | **GitHub** | Actionlint | Gitleaks no diretório `.github` | Actionlint (análise semântica) | Validação de integridade de composite actions | Validação da árvore de actions |
 | **Scripts** | ShellCheck e `bash -n` | Varredura de credenciais e permissões | Execução de alvos help do Makefile | Integridade de scripts do Makefile | Verificação de sintaxe de automações |
 
-## 3. Comandos de Validação Local
+## 3. Bidirecionalidade e Comandos de Validação Local
 
-O desenvolvedor executa localmente exatamente as mesmas validações da nuvem por meio do `Makefile`:
+O CI/CD local e o CI/CD do GitHub Actions compartilham estrita paridade bidirecional: o que é validado no pre-commit/local é validado no GitHub Actions, e vice-versa.
 
 ```bash
-# Executa o estágio em todas as 4 áreas temáticas
-make app-lint        # Lint geral
+# Execução da esteira completa idêntica ao CI com tabela de resumo
+make app-ci          # ou make ci
+
+# Execução por estágio em todas as 4 áreas temáticas
+make app-lint        # Lint geral (Python, Docker, GitHub, Scripts)
 make app-security    # Varredura de segurança completa
 make app-test        # Execução da suíte de testes com cobertura 100%
 make app-validate    # Validação estrutural e integridade

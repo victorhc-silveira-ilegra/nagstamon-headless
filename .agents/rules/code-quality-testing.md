@@ -31,7 +31,7 @@ Tanto localmente (`pre-commit` e `Makefile`) quanto no GitHub Actions (`.github/
 5. Build     -> Compilação de pacotes (wheels/sdist) ou imagens Docker
 ```
 
-- **Orquestrador Único**: O comando `clean_workspace.py --area <area> --stage <stage>` é a única fonte de verdade para a execução dos estágios.
+- **Orquestrador Único e Bidirecionalidade**: O comando `clean_workspace.py --area <area> --stage <stage>` e o pipeline completo `make app-ci` (ou `clean_workspace.py --stage pipeline`) asseguram paridade 100% bidirecional com os jobs do GitHub Actions (`Commitlint`, `Python`, `Docker`, `GitHub`, `Scripts`).
 
 ---
 

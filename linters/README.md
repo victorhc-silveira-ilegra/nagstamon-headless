@@ -6,7 +6,7 @@ Especificação dos padrões de qualidade de código, análise estática e autom
 
 A configuração de hooks em `.pre-commit-config.yaml` espelha com exatidão a matriz de validação do pipeline de CI (`.github/workflows/ci.yml`), operando sob o princípio de interrupção imediata na primeira falha (`fail_fast: true`):
 
-1. **Commitlint**: Validação da mensagem de commit no hook `commit-msg`.
+1. **Commitlint**: Validação da mensagem de commit no hook `commit-msg` local e no job `commitlint` do GitHub Actions via `.github/actions/ci/validate-commitlint`.
 2. **Área Python**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
 3. **Área Docker**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.
 4. **Área GitHub**: `Lint` -> `Segurança` -> `Testes` -> `Validate` -> `Build`.

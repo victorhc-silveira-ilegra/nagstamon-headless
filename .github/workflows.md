@@ -18,6 +18,8 @@ As automações de CI/CD utilizam ações compostas modulares localizadas em `.g
 │   └── pipeline-summary/          # Consolidação e publicação de resumo no GitHub Step Summary
 └── ci/
     ├── setup-python/              # Configuração do interpretador Python e restauração de caches
+    ├── validate-commitlint/       # Validação de mensagens de commit (Conventional Commits)
+    ├── validate-python/           # Execução dos quality gates de Python (Lint, Sec, Test, Val, Build)
     ├── validate-docker/           # Execução dos quality gates de Docker (Hadolint, Trivy, build)
     ├── validate-github/           # Validação estrutural de workflows, actions e actionlint
     ├── validate-scripts/          # Análise de scripts shell, permissões e syntax checks

@@ -1,0 +1,27 @@
+name: CI - Commitlint
+description: Validacao de Conventional Commits via commitlint
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: Executar Commitlint
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          npx --yes -p @commitlint/cli -p @commitlint/config-conventional \
+            commitlint --config linters/commitlint.config.mjs --from "origin/${{ github.base_ref }}" --to HEAD
+        else
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.after }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            git log -1 --pretty=format:%B > /tmp/commit_msg.txt
+            bash linters/git-hooks/commitlint.sh /tmp/commit_msg.txt
+          else
+            npx --yes -p @commitlint/cli -p @commitlint/config-conventional \
+              commitlint --config linters/commitlint.config.mjs --from "$BEFORE" --to "$AFTER"
+          fi
+        fi

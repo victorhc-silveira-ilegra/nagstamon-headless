@@ -2,6 +2,8 @@ name: Resumo do pipeline
 description: Publica status dos jobs no GitHub Summary
 
 inputs:
+  commitlint:
+    required: true
   python:
     required: true
   docker:
@@ -30,6 +32,7 @@ runs:
           echo ""
           echo "| Etapa | Status |"
           echo "|-------|--------|"
+          echo "| Commitlint | ${{ inputs.commitlint }} |"
           echo "| Python | ${{ inputs.python }} |"
           echo "| Docker | ${{ inputs.docker }} |"
           echo "| GitHub | ${{ inputs.github }} |"

@@ -13,6 +13,8 @@ from operations.gates.common import (
 
 _REQUIRED_ACTIONS = (
     GITHUB_DIR / "actions" / "ci" / "setup-python" / "action.yml",
+    GITHUB_DIR / "actions" / "ci" / "validate-commitlint" / "action.yml",
+    GITHUB_DIR / "actions" / "ci" / "validate-python" / "action.yml",
     GITHUB_DIR / "actions" / "ci" / "validate-docker" / "action.yml",
     GITHUB_DIR / "actions" / "ci" / "validate-github" / "action.yml",
     GITHUB_DIR / "actions" / "ci" / "validate-scripts" / "action.yml",

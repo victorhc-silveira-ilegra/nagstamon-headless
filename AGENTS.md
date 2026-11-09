@@ -36,6 +36,7 @@ make app-install
 make app-lint
 make app-security
 make app-test
+make app-ci
 
 # Diagnóstico de conectividade contra os servidores monitorados
 make app-ping

@@ -19,7 +19,7 @@ RESET  := \033[0m
 .DEFAULT_GOAL := help
 
 .PHONY: help app-install app-lint app-security app-test app-tests app-validate app-build \
-	app-run app-ping app-pre-commit app-pre-commit-run app-setup app-clean \
+	app-ci ci app-run app-ping app-pre-commit app-pre-commit-run app-setup app-clean \
 	docker-up docker-down docker-ps docker-logs docker-sh docker-restart docker-clean \
 	docker-rebuild docker-smoke
 
@@ -39,6 +39,7 @@ help:
 	@echo -e "  $(GREEN)app-test$(RESET)           - Testes de tudo + cobertura 100% (ou app-tests)"
 	@echo -e "  $(GREEN)app-validate$(RESET)       - Validate de tudo (Python, Docker, GitHub, Scripts)"
 	@echo -e "  $(GREEN)app-build$(RESET)          - Build de tudo (Python, Docker, GitHub, Scripts)"
+	@echo -e "  $(GREEN)app-ci$(RESET)             - Executa pipeline CI/CD completo com resumo (ou ci)"
 	@echo -e "  $(GREEN)app-clean$(RESET)          - Limpa caches e logs antigos"
 	@echo -e "  $(GREEN)app-install$(RESET)        - Pip no .venv"
 	@echo -e "  $(GREEN)app-setup$(RESET)          - Bootstrap .venv + deps (+ hooks se houver git)"
@@ -77,6 +78,9 @@ app-validate:
 
 app-build:
 	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --area all --stage build
+
+app-ci ci:
+	$(PYTHON) $(APP_DIR)/scripts/operations/clean_workspace.py --stage pipeline
 
 app-run:
 	$(PYTHON) run.py

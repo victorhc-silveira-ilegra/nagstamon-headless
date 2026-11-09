@@ -7,31 +7,37 @@ on:
   push:
     branches: [main]
     paths:
+      - ".agents/**"
       - ".dockerignore"
       - ".gitattributes"
       - ".gitignore"
       - ".github/**"
       - ".pre-commit-config.yaml"
+      - "AGENTS.md"
       - "app/**"
       - "docs/**"
       - "infra/**"
       - "linters/**"
       - "Makefile"
+      - "prompt-model.md"
       - "README.md"
       - "run.py"
   pull_request:
     branches: [main]
     paths:
+      - ".agents/**"
       - ".dockerignore"
       - ".gitattributes"
       - ".gitignore"
       - ".github/**"
       - ".pre-commit-config.yaml"
+      - "AGENTS.md"
       - "app/**"
       - "docs/**"
       - "infra/**"
       - "linters/**"
       - "Makefile"
+      - "prompt-model.md"
       - "README.md"
       - "run.py"
   workflow_dispatch:
@@ -49,6 +55,18 @@ permissions:
   contents: read
 
 jobs:
+  commitlint:
+    name: CI - Commitlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Obter codigo fonte
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commitlint matriz
+        uses: ./.github/actions/ci/validate-commitlint
+
   python:
     name: CI - Python
     runs-on: ubuntu-latest
@@ -59,30 +77,8 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Setup Python
-        uses: ./.github/actions/ci/setup-python
-      - name: Instalar Gitleaks
-        shell: bash
-        run: |
-          GITLEAKS_VERSION="8.24.2"
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
-          tar -xzf /tmp/gitleaks.tar.gz -C /tmp
-          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
-      - name: Python | Lint
-        shell: bash
-        run: python app/scripts/operations/clean_workspace.py --area python --stage lint
-      - name: Python | Seguranca
-        shell: bash
-        run: python app/scripts/operations/clean_workspace.py --area python --stage security
-      - name: Python | Testes
-        shell: bash
-        run: python app/scripts/operations/clean_workspace.py --area python --stage test --coverage-fail-under 100
-      - name: Python | Validate
-        shell: bash
-        run: python app/scripts/operations/clean_workspace.py --area python --stage validate
-      - name: Python | Build
-        shell: bash
-        run: python app/scripts/operations/clean_workspace.py --area python --stage build
+      - name: Python matriz
+        uses: ./.github/actions/ci/validate-python
 
   docker:
     name: CI - Docker
@@ -116,11 +112,12 @@ jobs:
 
   release:
     name: CI - Release
-    needs: [python, docker, github, scripts]
+    needs: [commitlint, python, docker, github, scripts]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       !contains(github.event.head_commit.message, '[skip-cd]') &&
+      needs.commitlint.result == 'success' &&
       needs.python.result == 'success' &&
       needs.docker.result == 'success' &&
       needs.github.result == 'success' &&
@@ -170,7 +167,7 @@ jobs:
 
   pipeline-summary:
     name: CI/CD - Resumo
-    needs: [python, docker, github, scripts, release]
+    needs: [commitlint, python, docker, github, scripts, release]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -180,6 +177,7 @@ jobs:
       - name: Resumo do pipeline
         uses: ./.github/actions/shared/pipeline-summary
         with:
+          commitlint: ${{ needs.commitlint.result }}
           python: ${{ needs.python.result }}
           docker: ${{ needs.docker.result }}
           github: ${{ needs.github.result }}
