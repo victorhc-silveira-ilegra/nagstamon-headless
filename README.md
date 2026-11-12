@@ -1,7 +1,7 @@
 # Nagstamon Headless
 
-[![CI](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/actions/workflows/ci.yml/badge.svg)](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/victorhc-silveira-ilegra/nagstamon-headless?display_name=tag&sort=semver)](https://github.com/victorhc-silveira-ilegra/nagstamon-headless/releases)
+[![CI](https://github.com/victorhc-silveira-ilegra/matera-nagstamon-headless/actions/workflows/ci.yml/badge.svg)](https://github.com/victorhc-silveira-ilegra/matera-nagstamon-headless/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/victorhc-silveira-ilegra/matera-nagstamon-headless?display_name=tag&sort=semver)](https://github.com/victorhc-silveira-ilegra/matera-nagstamon-headless/releases)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](app/pyproject.toml)
 [![Ruff](https://img.shields.io/badge/linter-ruff-D7FF64?logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
